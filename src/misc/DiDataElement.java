@@ -33,6 +33,23 @@ public class DiDataElement {
 	 */
 	public void readNext(DiFileInputStream is) throws Exception {
     	// exercise 1
+		_groupid = is.getShort();
+		_elementid = is.getShort();
+		_vr = is.getShort();
+
+		if(DiDi.getVRstr(_vr) == "--"){
+			int next_two_bytes = is.getShort();
+			_vl = (next_two_bytes<<16) + _vr;
+		}
+		else{
+			_vl = is.getShort();
+		}
+
+		byte[] values = new byte[_vl];
+
+		is.read(values);
+		_values = values;
+		System.out.println(this.toString());
 	}
 
 	/**
