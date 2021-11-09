@@ -123,6 +123,7 @@ public class DiFileInputStream extends FileInputStream {
     public boolean skipHeader() throws IOException {
     	// exercise 1 - skip header, return true if prefix = DICM.
     	// dont forget to set the _location attribute !
+		_location = 0;
 		byte[] array = new byte[128];
 		int skipped = this.read(array);
 
@@ -131,7 +132,6 @@ public class DiFileInputStream extends FileInputStream {
 		int b2 = getByte();
 		int b3 = getByte();
 
-		_location += 128 + 4;
 		if (b0==-1 || b1==-1 || b2==-1 || b3==-1) {
 			return false;
 		} else if ((char)b0 == 'D' && (char)b1 == 'I' && (char)b2 == 'C' && (char)b3 == 'M'){
