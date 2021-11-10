@@ -74,8 +74,6 @@ public class DiDataElement {
 				is.set_explicit(true);
 			}
 		}
-		System.out.println("explicit: " + is.get_explicit());
-		System.out.println(this.toString());
 	}
 
 	/**

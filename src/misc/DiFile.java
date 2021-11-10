@@ -1,6 +1,7 @@
 package misc;
 
 import java.util.*;
+import misc.DiFileInputStream;
 
 /**
  * Implements the internal representation of a DICOM file.
@@ -38,6 +39,29 @@ public class DiFile {
 	 */
 	public void initFromFile(String file_name) throws Exception {
 		// exercise 1
+		_file_name = file_name;
+		DiFileInputStream is = new DiFileInputStream(file_name);
+		is.skipHeader();
+
+		while (true) {
+			DiDataElement dde = new DiDataElement();
+			dde.readNext(is);
+			_data_elements.put(dde.getTag(), dde);
+			int tag = dde.getTag();
+			if (tag == 0x00280011) { //columns / width
+				_w = dde.getValueAsInt();
+			} else if (tag == 0x00280010) { //rows / height
+				_h = dde.getValueAsInt();
+			} else if (tag == 0x00280100) { //bits allocated
+				_bits_allocated = dde.getValueAsInt();
+			} else if (tag == 0x00280101) { // bits stored
+				_bits_stored = dde.getValueAsInt();
+			} else if (tag == 0x00200013) { //image number
+				_image_number = dde.getValueAsInt();
+			} else if (tag == 0x7FE00010) { //pixel data, last element
+				break;
+			}
+		}
 	}
 
 	/**
