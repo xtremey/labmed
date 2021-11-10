@@ -1,5 +1,7 @@
 package misc;
 
+import java.io.IOException;
+
 /**
  * Implements the internal representation of a DICOM Data Element.
  * 
@@ -35,20 +37,44 @@ public class DiDataElement {
     	// exercise 1
 		_groupid = is.getShort();
 		_elementid = is.getShort();
-		_vr = is.getShort();
 
-		if(DiDi.getVRstr(_vr) == "--"){
-			int next_two_bytes = is.getShort();
-			_vl = (next_two_bytes<<16) + _vr;
+		if(_groupid == 2 || is.get_explicit()){
+			// explicit
+			int b0 = is.getByte();
+			int b1 = is.getByte();
+
+			_vr = ((b0 << 8) + b1);
+
+			if (_vr == DiDi.OB || _vr == DiDi.OW || _vr == DiDi.SQ || _vr == DiDi.UT || _vr == DiDi.UN){
+				is.getShort();
+				_vl = is.getInt();
+			} else {
+				_vl = is.getShort();
+			}
+
+
 		}
 		else{
-			_vl = is.getShort();
+			// implicit
+			_vr = DiDi.getVR(getTag());
+			_vl = is.getInt();
 		}
 
 		byte[] values = new byte[_vl];
 
 		is.read(values);
 		_values = values;
+		int tag = getTag();
+		if(tag == 0x00020010){
+			String value = getValueAsString();
+			if(value.equals("1.2.840.10008.1.2")){
+				is.set_explicit(false);
+			}
+			else if(value.equals("1.2.840.10008.1.2.1")){
+				is.set_explicit(true);
+			}
+		}
+		System.out.println("explicit: " + is.get_explicit());
 		System.out.println(this.toString());
 	}
 

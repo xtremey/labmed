@@ -13,6 +13,7 @@ import java.sql.Array;
 public class DiFileInputStream extends FileInputStream {
 	private int _location; // position in the file, equal to the number of bytes read
 	private boolean _little_endian;
+	private boolean _explicit;
 
 	/**
 	 * Default Constructor, argument is a string containing the file name. Endianess is little by default.
@@ -24,6 +25,7 @@ public class DiFileInputStream extends FileInputStream {
 		super(fname);
 		_location = 0;
 		_little_endian = true;
+		_explicit = true;
 	}
 	
 	/**
@@ -36,6 +38,7 @@ public class DiFileInputStream extends FileInputStream {
 		super(file);
 		_location = 0;
 		_little_endian = true;
+		_explicit = true;
 	}
 	
 	public int read() throws IOException {
@@ -176,4 +179,12 @@ public class DiFileInputStream extends FileInputStream {
     public void set_little_endian(boolean little_endian) {
     	_little_endian = little_endian;
     }
+
+	public boolean get_explicit() {
+		return _explicit;
+	}
+
+	public void set_explicit(boolean explicit) {
+		_explicit = explicit;
+	}
 }
