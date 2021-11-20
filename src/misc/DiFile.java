@@ -111,7 +111,6 @@ public class DiFile {
 	/**
 	 * Allows access to the internal data element HashTable.
 	 * @return a reference to the data element HashTable
-	 * @see IntHashtable
 	 */
 	public Hashtable<Integer, DiDataElement> getDataElements() {
 		return _data_elements;

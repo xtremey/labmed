@@ -19,6 +19,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import misc.DiDataElement;
 import misc.DiFile;
 import misc.MyObservable;
 import misc.MyObserver;
@@ -129,8 +130,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 	}
 		
 	/**
-	 * Constructor, with a reference to the global image stack as argument.
-	 * @param slices a reference to the global image stack
+	 * Constructor, with a reference to the global image stack as argument
 	 */
 	public Viewport2d() {
 		super();
@@ -205,10 +205,118 @@ public class Viewport2d extends Viewport implements MyObserver {
 			// example: _bg_img.setRGB(x,y, 0xff00ff00)
 			//                                AARRGGBB
 			// the resulting image will be used in the Panel2d::paint() method
+
+			//get active file
+			int active_img_id = _slices.getActiveImageID();
+			DiFile active_file = _slices.getDiFile(active_img_id);
+
+			//check data format: has to be monochrome2
+			DiDataElement dde_format = active_file.getDataElements().get(0x00280004);
+			String format = dde_format.getValueAsString().replaceAll("\\s+",""); // remove whitespace
+			if (!format.equals("MONOCHROME2")){
+				System.out.println("The only supported data format is MONOCHROME2, but got: |" + format + "|");
+				return;
+			}
+
+			// get byte storage format
+			int bits_allocated = active_file.getBitsAllocated();
+			int bits_stored = active_file.getBitsStored();
+			int high_bit = bits_stored - 1;
+
+			//sanity check for high bit if it is given
+			DiDataElement dde_high_bit = active_file.getDataElements().get(0x00280102);
+			if (dde_high_bit != null ) {
+				int actual_high_bit = dde_high_bit.getValueAsInt();
+				if (actual_high_bit != high_bit) {
+					System.out.println("Expected high bit to be " + high_bit + ", but got: " + actual_high_bit);
+					return;
+				}
+			}
+
+			//get pixel data
+			DiDataElement dde_pixel_data = active_file.getDataElements().get(0x7FE00010);
+			byte[] pixel_bytes = dde_pixel_data.getValues();
+
+			//sanity check for pixel array length
+			int expected_byte_length = _w * _h * bits_allocated / 8;
+			if (pixel_bytes.length != expected_byte_length){
+				System.out.println("Expected pixel array to be of length "
+						+ expected_byte_length + ", but got: " + pixel_bytes.length);
+				return;
+			}
+
+			//get intercept, slope, window-center, window-width
+			int window_center = (int) Math.pow(2, (float)(bits_stored / 2)); //default center is half of stored bits
+			int window_width = (int) Math.pow(2, bits_stored); //default window is whole range
+			int intercept = 0;
+			int slope = 1;
+
+			DiDataElement dde_window_center = active_file.getDataElements().get(0x00281050);
+			if (dde_window_center != null) window_center = dde_window_center.getValueAsInt();
+
+			DiDataElement dde_window_width = active_file.getDataElements().get(0x00281051);
+			if (dde_window_width != null) window_width = dde_window_width.getValueAsInt();
+
+			DiDataElement dde_intercept = active_file.getDataElements().get(0x00281052);
+			if (dde_intercept != null) intercept = dde_intercept.getValueAsInt();
+
+			DiDataElement dde_slope = active_file.getDataElements().get(0x00281053);
+			if (dde_slope != null) slope = dde_slope.getValueAsInt();
+
+
+			//pixel data and important constants
+			int byte_per_pixel = bits_allocated / 8;
+			int num_pixels = pixel_bytes.length / byte_per_pixel;
+			final int[] bg_pixels = ((DataBufferInt) _bg_img.getRaster().getDataBuffer()).getData();
+
+			//integer format
+			int last_important_byte = (int) Math.ceil(bits_stored / 8.0); //last byte with information, ignore all above
+			int last_important_bit = last_important_byte * 8 - bits_stored; //last bit with information
+			int highest_last_byte_val = (int) Math.pow(2, last_important_bit) - 1;
+
+			//iterate over pixel values
+			for (int i = 0; i < num_pixels; i++){
+				int val = 0;
+				//iterate over bytes per pixel
+				for (int j = 0; j < byte_per_pixel; j++) {
+					//check if byte can be skipped, for given dataset not relevant since all bytes relevant
+					if (j + 1 > last_important_byte) continue;
+
+					byte raw = pixel_bytes[i * byte_per_pixel + j];
+					int unsigned = (int)(raw & 0xff);
+
+					//ignore bits with no information, for given dataset not relevant: all zeros anyway
+					if (unsigned > highest_last_byte_val) unsigned = highest_last_byte_val;
+
+					int shifted = unsigned << (j * 8); //accumulate values of all bytes per pixel
+					val += shifted;
+				}
+
+				//apply scaling
+				float scaled = slope * val + intercept;
+
+				//normalize to 0-255
+				int normalized;
+				double lower_bound = window_center - window_width / 2.0;
+				double upper_bound = window_center + window_width / 2.0;
+				if (scaled <= lower_bound){
+					normalized = 0;
+				} else if (scaled > upper_bound){
+					normalized = 255;
+				} else {
+					normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+				}
+
+				int argb = (0xff<<24) + (normalized<<16) + (normalized<<8) + normalized;
+
+				bg_pixels[i] = argb;
+			}
+
+
 		} else {
 			// faster: access the data array directly (see below)
 			final int[] bg_pixels = ((DataBufferInt) _bg_img.getRaster().getDataBuffer()).getData();
-			for (int i=0; i<bg_pixels.length; i++) {
+			for (int i = 0; i<bg_pixels.length; i++) {
 				bg_pixels[i] = 0xff000000;
 			}
 		}
