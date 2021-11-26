@@ -8,6 +8,7 @@ import java.awt.Graphics;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Hashtable;
 
@@ -23,6 +24,7 @@ import misc.DiDataElement;
 import misc.DiFile;
 import misc.MyObservable;
 import misc.MyObserver;
+import misc.ViewMode;
 
 /**
  * Two dimensional viewport for viewing the DICOM images + segmentations.
@@ -49,6 +51,9 @@ public class Viewport2d extends Viewport implements MyObserver {
 	// width and heigth of our images. dont mix those with
 	// Viewport2D width / height or Panel2d width / height!
 	private int _w, _h;
+
+	// store the current viewmode
+	private ViewMode _viewMode;
 
 	/**
 	 * Private class, implementing the GUI element for displaying the 2d data.
@@ -155,6 +160,7 @@ public class Viewport2d extends Viewport implements MyObserver {
         add(_panel2d, BorderLayout.CENTER );        
         add(_img_sel, BorderLayout.EAST );
 		setPreferredSize(new Dimension(DEF_WIDTH+50,DEF_HEIGHT));
+		_viewMode = ViewMode.TRANSVERSAL;
 	}
 
 
@@ -166,7 +172,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 	private void reallocate() {
 		_w = _slices.getImageWidth();
 		_h = _slices.getImageHeight();
-		
+
 		// create background image
 		_bg_img = new BufferedImage(_w, _h, BufferedImage.TYPE_INT_ARGB);
 
@@ -175,6 +181,285 @@ public class Viewport2d extends Viewport implements MyObserver {
 			BufferedImage seg_img = new BufferedImage(_w, _h, BufferedImage.TYPE_INT_ARGB);
 
 			_map_seg_name_to_img.put(seg_name, seg_img);
+		}
+	}
+
+
+	public void drawTransversal(){
+		//get active file
+		int active_img_id = _slices.getActiveImageID();
+		DiFile active_file = _slices.getDiFile(active_img_id);
+
+		//check data format: has to be monochrome2
+		DiDataElement dde_format = active_file.getDataElements().get(0x00280004);
+		String format = dde_format.getValueAsString().replaceAll("\\s+",""); // remove whitespace
+		if (!format.equals("MONOCHROME2")){
+			System.out.println("The only supported data format is MONOCHROME2, but got: |" + format + "|");
+			return;
+		}
+
+		// get byte storage format
+		int bits_allocated = active_file.getBitsAllocated();
+		int bits_stored = active_file.getBitsStored();
+		int high_bit = bits_stored - 1;
+
+		//sanity check for high bit if it is given
+		DiDataElement dde_high_bit = active_file.getDataElements().get(0x00280102);
+		if (dde_high_bit != null ) {
+			int actual_high_bit = dde_high_bit.getValueAsInt();
+			if (actual_high_bit != high_bit) {
+				System.out.println("Expected high bit to be " + high_bit + ", but got: " + actual_high_bit);
+				return;
+			}
+		}
+
+
+		//get pixel data
+		DiDataElement dde_pixel_data = active_file.getDataElements().get(0x7FE00010);
+		byte[] pixel_bytes = dde_pixel_data.getValues();
+
+		//sanity check for pixel array length
+		int expected_byte_length = _w * _h * bits_allocated / 8;
+		if (pixel_bytes.length != expected_byte_length){
+			System.out.println("Expected pixel array to be of length "
+					+ expected_byte_length + ", but got: " + pixel_bytes.length);
+			return;
+		}
+
+		//get intercept, slope, window-center, window-width
+		int window_center = (int) Math.pow(2, (float)(bits_stored / 2)); //default center is half of stored bits
+		int window_width = (int) Math.pow(2, bits_stored); //default window is whole range
+		int intercept = 0;
+		int slope = 1;
+
+		DiDataElement dde_window_center = active_file.getDataElements().get(0x00281050);
+		if (dde_window_center != null) window_center = dde_window_center.getValueAsInt();
+
+		DiDataElement dde_window_width = active_file.getDataElements().get(0x00281051);
+		if (dde_window_width != null) window_width = dde_window_width.getValueAsInt();
+
+		DiDataElement dde_intercept = active_file.getDataElements().get(0x00281052);
+		if (dde_intercept != null) intercept = dde_intercept.getValueAsInt();
+
+		DiDataElement dde_slope = active_file.getDataElements().get(0x00281053);
+		if (dde_slope != null) slope = dde_slope.getValueAsInt();
+
+
+		//pixel data and important constants
+		int byte_per_pixel = bits_allocated / 8;
+		int num_pixels = pixel_bytes.length / byte_per_pixel;
+		final int[] bg_pixels = ((DataBufferInt) _bg_img.getRaster().getDataBuffer()).getData();
+
+		//integer format
+		int last_important_byte = (int) Math.ceil(bits_stored / 8.0); //last byte with information, ignore all above
+		int last_important_bit = last_important_byte * 8 - bits_stored; //last bit with information
+		int highest_last_byte_val = (int) Math.pow(2, last_important_bit) - 1;
+
+		//iterate over pixel values
+		for (int i = 0; i < num_pixels; i++){
+			int val = 0;
+			//iterate over bytes per pixel
+			for (int j = 0; j < byte_per_pixel; j++) {
+				//check if byte can be skipped, for given dataset not relevant since all bytes relevant
+				if (j + 1 > last_important_byte) continue;
+
+				byte raw = pixel_bytes[i * byte_per_pixel + j];
+				int unsigned = (int)(raw & 0xff);
+
+				//ignore bits with no information, for given dataset not relevant: all zeros anyway
+				if (unsigned > highest_last_byte_val) unsigned = highest_last_byte_val;
+
+				int shifted = unsigned << (j * 8); //accumulate values of all bytes per pixel
+				val += shifted;
+			}
+
+			//apply scaling
+			float scaled = slope * val + intercept;
+
+			//normalize to 0-255
+			int normalized;
+			double lower_bound = window_center - window_width / 2.0;
+			double upper_bound = window_center + window_width / 2.0;
+			if (scaled <= lower_bound){
+				normalized = 0;
+			} else if (scaled > upper_bound){
+				normalized = 255;
+			} else {
+				normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+			}
+
+			int argb = (0xff<<24) + (normalized<<16) + (normalized<<8) + normalized;
+
+			bg_pixels[i] = argb;
+		}
+	}
+
+	public byte[] get_pixel_column(byte[] pixel_bytes, int column_index, int h, int w, int byte_per_pixel){
+		byte[] result = new byte[h*byte_per_pixel];
+		for (int y = 0; y < h; y++){
+			for (int x = 0; x < w * byte_per_pixel; x += byte_per_pixel){
+				if (x == column_index){
+					for(int j = 0; j < byte_per_pixel; j++) {
+						result[y + j] = pixel_bytes[y * w*byte_per_pixel + x + j];
+					}
+				}
+			}
+		}
+		return result;
+	}
+
+	public byte[] get_pixel_row(byte[] pixel_bytes, int row_index, int w){
+		return Arrays.copyOfRange(pixel_bytes, row_index * w, (row_index + 1) * w);
+	}
+
+	public int[] get_argb_array(byte[] pixel_bytes,
+						int byte_per_pixel,
+						int last_important_byte,
+						int highest_last_byte_val,
+						int slope,
+						int intercept,
+						int window_center,
+						int window_width){
+
+		int[] result = new int[pixel_bytes.length / byte_per_pixel];
+		for(int i = 0; i < pixel_bytes.length; i += byte_per_pixel ){
+			int val = 0;
+			//iterate over bytes per pixel
+			for (int j = 0; j < byte_per_pixel; j++) {
+				//check if byte can be skipped, for given dataset not relevant since all bytes relevant
+				if (j + 1 > last_important_byte) continue;
+
+				byte raw = pixel_bytes[i * byte_per_pixel + j];
+				int unsigned = (int)(raw & 0xff);
+
+				//ignore bits with no information, for given dataset not relevant: all zeros anyway
+				if (unsigned > highest_last_byte_val) unsigned = highest_last_byte_val;
+
+				int shifted = unsigned << (j * 8); //accumulate values of all bytes per pixel
+				val += shifted;
+			}
+
+			//apply scaling
+			float scaled = slope * val + intercept;
+
+			//normalize to 0-255
+			int normalized;
+			double lower_bound = window_center - window_width / 2.0;
+			double upper_bound = window_center + window_width / 2.0;
+			if (scaled <= lower_bound){
+				normalized = 0;
+			} else if (scaled > upper_bound){
+				normalized = 255;
+			} else {
+				normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+			}
+
+			int argb = (0xff<<24) + (normalized<<16) + (normalized<<8) + normalized;
+			result[i] = argb;
+		}
+		return result;
+	}
+
+
+	public void drawSagittal() {
+		//get active file
+		int active_img_id = _slices.getActiveImageID();
+		DiFile active_file = _slices.getDiFile(active_img_id);
+
+		//check data format: has to be monochrome2
+		DiDataElement dde_format = active_file.getDataElements().get(0x00280004);
+		String format = dde_format.getValueAsString().replaceAll("\\s+",""); // remove whitespace
+		if (!format.equals("MONOCHROME2")){
+			System.out.println("The only supported data format is MONOCHROME2, but got: |" + format + "|");
+			return;
+		}
+
+		// get byte storage format
+		int bits_allocated = active_file.getBitsAllocated();
+		int bits_stored = active_file.getBitsStored();
+		int high_bit = bits_stored - 1;
+
+		//sanity check for high bit if it is given
+		DiDataElement dde_high_bit = active_file.getDataElements().get(0x00280102);
+		if (dde_high_bit != null ) {
+			int actual_high_bit = dde_high_bit.getValueAsInt();
+			if (actual_high_bit != high_bit) {
+				System.out.println("Expected high bit to be " + high_bit + ", but got: " + actual_high_bit);
+				return;
+			}
+		}
+
+		//get pixel data
+		DiDataElement dde_pixel_data = active_file.getDataElements().get(0x7FE00010);
+		byte[] pixel_bytes = dde_pixel_data.getValues();
+
+		//sanity check for pixel array length
+		int expected_byte_length = _w * _h * bits_allocated / 8;
+		if (pixel_bytes.length != expected_byte_length){
+			System.out.println("Expected pixel array to be of length "
+					+ expected_byte_length + ", but got: " + pixel_bytes.length);
+			return;
+		}
+
+		//get intercept, slope, window-center, window-width
+		int window_center = (int) Math.pow(2, (float)(bits_stored / 2)); //default center is half of stored bits
+		int window_width = (int) Math.pow(2, bits_stored); //default window is whole range
+		int intercept = 0;
+		int slope = 1;
+
+		DiDataElement dde_window_center = active_file.getDataElements().get(0x00281050);
+		if (dde_window_center != null) window_center = dde_window_center.getValueAsInt();
+
+		DiDataElement dde_window_width = active_file.getDataElements().get(0x00281051);
+		if (dde_window_width != null) window_width = dde_window_width.getValueAsInt();
+
+		DiDataElement dde_intercept = active_file.getDataElements().get(0x00281052);
+		if (dde_intercept != null) intercept = dde_intercept.getValueAsInt();
+
+		DiDataElement dde_slope = active_file.getDataElements().get(0x00281053);
+		if (dde_slope != null) slope = dde_slope.getValueAsInt();
+
+
+		//pixel data and important constants
+		int byte_per_pixel = bits_allocated / 8;
+		int num_pixels = pixel_bytes.length / byte_per_pixel;
+		final int[] bg_pixels = ((DataBufferInt) _bg_img.getRaster().getDataBuffer()).getData();
+
+		//integer format
+		int last_important_byte = (int) Math.ceil(bits_stored / 8.0); //last byte with information, ignore all above
+		int last_important_bit = last_important_byte * 8 - bits_stored; //last bit with information
+		int highest_last_byte_val = (int) Math.pow(2, last_important_bit) - 1;
+
+		//iterate over pixel values
+		// for sagittal we need to reuse values from one image for multiple rows in the displayed image
+		// so displayed rows which indices are in the same bucket will draw their pixel values from the same image
+		int min_bucket_sice = _h / _slices.getNumberOfImages();
+		int rest = _h % _slices.getNumberOfImages();
+		for (int i = 0; i < _slices.getNumberOfImages(); i++){
+			DiFile currentFile = _slices.getDiFile(i);
+			//get pixel data
+			DiDataElement current_pixel_data = currentFile.getDataElements().get(0x7FE00010);
+			byte[] current_pixel_bytes = current_pixel_data.getValues();
+			byte[] pixel_column = get_pixel_column(current_pixel_bytes, active_img_id, _h, _w, byte_per_pixel);
+			int[] pixel_column_argbs = get_argb_array(pixel_column,
+					byte_per_pixel,
+					last_important_byte,
+					highest_last_byte_val,
+					slope,
+					intercept,
+					window_center,
+					window_width);
+			if(rest > 0) {
+				for (int j = 0; j < min_bucket_sice + 1; j++) {
+					_bg_img.setRGB(0, (i * min_bucket_sice + j), _w, 1, pixel_column_argbs, 0, 1);
+				}
+				rest -= 1;
+			}else{
+				for (int j = 0; j < min_bucket_sice; j++) {
+					_bg_img.setRGB(0, (i * min_bucket_sice + j), _w, 1, pixel_column_argbs, 0, 1);
+				}
+			}
+
 		}
 	}
 	
@@ -206,111 +491,27 @@ public class Viewport2d extends Viewport implements MyObserver {
 			//                                AARRGGBB
 			// the resulting image will be used in the Panel2d::paint() method
 
-			//get active file
-			int active_img_id = _slices.getActiveImageID();
-			DiFile active_file = _slices.getDiFile(active_img_id);
-
-			//check data format: has to be monochrome2
-			DiDataElement dde_format = active_file.getDataElements().get(0x00280004);
-			String format = dde_format.getValueAsString().replaceAll("\\s+",""); // remove whitespace
-			if (!format.equals("MONOCHROME2")){
-				System.out.println("The only supported data format is MONOCHROME2, but got: |" + format + "|");
-				return;
-			}
-
-			// get byte storage format
-			int bits_allocated = active_file.getBitsAllocated();
-			int bits_stored = active_file.getBitsStored();
-			int high_bit = bits_stored - 1;
-
-			//sanity check for high bit if it is given
-			DiDataElement dde_high_bit = active_file.getDataElements().get(0x00280102);
-			if (dde_high_bit != null ) {
-				int actual_high_bit = dde_high_bit.getValueAsInt();
-				if (actual_high_bit != high_bit) {
-					System.out.println("Expected high bit to be " + high_bit + ", but got: " + actual_high_bit);
-					return;
+			System.out.println(_viewMode);
+			switch (_viewMode){
+				case TRANSVERSAL: {
+					drawTransversal();
+					break;
+				}
+				case SAGITTAL: {
+					drawSagittal();
+					break;
+				}
+				case FRONTAL: {
+					final int[] bg_pixels = ((DataBufferInt) _bg_img.getRaster().getDataBuffer()).getData();
+					for (int i = 0; i<bg_pixels.length; i++) {
+						bg_pixels[i] = 0xff000000;
+					}
+					break;
 				}
 			}
 
-			//get pixel data
-			DiDataElement dde_pixel_data = active_file.getDataElements().get(0x7FE00010);
-			byte[] pixel_bytes = dde_pixel_data.getValues();
-
-			//sanity check for pixel array length
-			int expected_byte_length = _w * _h * bits_allocated / 8;
-			if (pixel_bytes.length != expected_byte_length){
-				System.out.println("Expected pixel array to be of length "
-						+ expected_byte_length + ", but got: " + pixel_bytes.length);
-				return;
-			}
-
-			//get intercept, slope, window-center, window-width
-			int window_center = (int) Math.pow(2, (float)(bits_stored / 2)); //default center is half of stored bits
-			int window_width = (int) Math.pow(2, bits_stored); //default window is whole range
-			int intercept = 0;
-			int slope = 1;
-
-			DiDataElement dde_window_center = active_file.getDataElements().get(0x00281050);
-			if (dde_window_center != null) window_center = dde_window_center.getValueAsInt();
-
-			DiDataElement dde_window_width = active_file.getDataElements().get(0x00281051);
-			if (dde_window_width != null) window_width = dde_window_width.getValueAsInt();
-
-			DiDataElement dde_intercept = active_file.getDataElements().get(0x00281052);
-			if (dde_intercept != null) intercept = dde_intercept.getValueAsInt();
-
-			DiDataElement dde_slope = active_file.getDataElements().get(0x00281053);
-			if (dde_slope != null) slope = dde_slope.getValueAsInt();
 
 
-			//pixel data and important constants
-			int byte_per_pixel = bits_allocated / 8;
-			int num_pixels = pixel_bytes.length / byte_per_pixel;
-			final int[] bg_pixels = ((DataBufferInt) _bg_img.getRaster().getDataBuffer()).getData();
-
-			//integer format
-			int last_important_byte = (int) Math.ceil(bits_stored / 8.0); //last byte with information, ignore all above
-			int last_important_bit = last_important_byte * 8 - bits_stored; //last bit with information
-			int highest_last_byte_val = (int) Math.pow(2, last_important_bit) - 1;
-
-			//iterate over pixel values
-			for (int i = 0; i < num_pixels; i++){
-				int val = 0;
-				//iterate over bytes per pixel
-				for (int j = 0; j < byte_per_pixel; j++) {
-					//check if byte can be skipped, for given dataset not relevant since all bytes relevant
-					if (j + 1 > last_important_byte) continue;
-
-					byte raw = pixel_bytes[i * byte_per_pixel + j];
-					int unsigned = (int)(raw & 0xff);
-
-					//ignore bits with no information, for given dataset not relevant: all zeros anyway
-					if (unsigned > highest_last_byte_val) unsigned = highest_last_byte_val;
-
-					int shifted = unsigned << (j * 8); //accumulate values of all bytes per pixel
-					val += shifted;
-				}
-
-				//apply scaling
-				float scaled = slope * val + intercept;
-
-				//normalize to 0-255
-				int normalized;
-				double lower_bound = window_center - window_width / 2.0;
-				double upper_bound = window_center + window_width / 2.0;
-				if (scaled <= lower_bound){
-					normalized = 0;
-				} else if (scaled > upper_bound){
-					normalized = 255;
-				} else {
-					normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
-				}
-
-				int argb = (0xff<<24) + (normalized<<16) + (normalized<<8) + normalized;
-
-				bg_pixels[i] = argb;
-			}
 
 
 		} else {
@@ -429,6 +630,20 @@ public class Viewport2d extends Viewport implements MyObserver {
 	 */
 	public void setViewMode(int mode) {
 		// you should do something with the new viewmode here
-		System.out.println("Viewmode "+mode);
+		switch (mode){
+			case 1: {
+				_viewMode = ViewMode.SAGITTAL;
+				break;
+			}
+			case 2: {
+				_viewMode = ViewMode.FRONTAL;
+				break;
+			}
+			default: {
+				_viewMode = ViewMode.TRANSVERSAL;
+				break;
+			}
+		}
+		update_view();
 	}
 }
