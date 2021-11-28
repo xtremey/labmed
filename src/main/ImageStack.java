@@ -175,7 +175,14 @@ public class ImageStack extends MyObservable {
 		
 		return seg;
 	}
-	
+
+	public int get_intensity(int x, int y, int z){
+		return getDiFile(z).get_intensity(x, y);
+	}
+
+	public int get_greyscale(int x, int y, int z){
+		return getDiFile(z).get_greyscale(x, y);
+	}
 	
 	/**
 	 * Returns the DicomFile from the series with image number i; 

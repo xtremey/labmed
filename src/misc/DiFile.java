@@ -1,5 +1,6 @@
 package misc;
 
+import java.awt.image.DataBufferInt;
 import java.util.*;
 import misc.DiFileInputStream;
 
@@ -19,6 +20,15 @@ public class DiFile {
 	private Hashtable<Integer, DiDataElement> _data_elements;
 	private int _image_number;
 	String _file_name;
+	private int _window_center;
+	private boolean _window_center_given = false;
+	private int _window_width;
+	private boolean _window_width_given = false;
+	private int _slope = 1;
+	private int _intercept = 0;
+	private int _high_bit;
+	private String _format;
+	private int[][] _intensity_arr; // width * height
 
 	/**
 	 * Default Construtor - creates an empty DicomFile.
@@ -56,12 +66,123 @@ public class DiFile {
 				_bits_allocated = dde.getValueAsInt();
 			} else if (tag == 0x00280101) { // bits stored
 				_bits_stored = dde.getValueAsInt();
-			} else if (tag == 0x00200013) { //image number
-				_image_number = dde.getValueAsInt();
+			} else if (tag == 0x00280004) { //format
+				_format = dde.getValueAsString().replaceAll("\\s+","");
+				if (!_format.equals("MONOCHROME2")){
+					throw new Exception("The only supported data format is MONOCHROME2, but got: |" + _format + "|");
+				}
+			} else if (tag == 0x00280102) { //high bit
+				_high_bit = dde.getValueAsInt();
+				if (_high_bit != _bits_stored - 1) {
+					throw new Exception("Expected high bit to be " + (_bits_stored - 1) + ", but got: " + _high_bit);
+				}
+			} else if (tag == 0x00281050) { //window center
+				_window_center = dde.getValueAsInt();
+				_window_center_given = true;
+			} else if (tag == 0x00281051) { //window width
+				_window_width = dde.getValueAsInt();
+				_window_width_given = true;
+			} else if (tag == 0x00281052) { //intercept
+				_intercept = dde.getValueAsInt();
+			} else if (tag == 0x00281053) { //slope
+				_slope = dde.getValueAsInt();
 			} else if (tag == 0x7FE00010) { //pixel data, last element
+				//byte data
+				byte[] pixel_bytes = dde.getValues();
+
+				//sanity check for pixel array length
+				int expected_byte_length = _w * _h * _bits_allocated / 8;
+				if (pixel_bytes.length != expected_byte_length){
+					throw new Exception("Expected pixel array to be of length "
+							+ expected_byte_length + ", but got: " + pixel_bytes.length);
+				}
+
+				//init array
+				_intensity_arr = new int[_w][_h];
+
+				//integer format
+				int last_important_byte = (int) Math.ceil(_bits_stored / 8.0); //last byte with information, ignore all above
+				int last_important_bit = last_important_byte * 8 - _bits_stored; //last bit with information
+				int highest_last_byte_val = (int) Math.pow(2, last_important_bit) - 1;
+
+				//pixel data constants
+				int byte_per_pixel = _bits_allocated / 8;
+				int num_pixels = _w * _h;
+
+				//iterate over pixel values
+				for (int i = 0; i < num_pixels; i++) {
+					int val = 0;
+					//iterate over bytes per pixel
+					for (int j = 0; j < byte_per_pixel; j++) {
+						//check if byte can be skipped, for given dataset not relevant since all bytes relevant
+						if (j + 1 > last_important_byte) continue;
+
+						byte raw = pixel_bytes[i * byte_per_pixel + j];
+						int unsigned = (int) (raw & 0xff);
+
+						//ignore bits with no information, for given dataset not relevant: all zeros anyway
+						if (unsigned > highest_last_byte_val) unsigned = highest_last_byte_val;
+
+						int shifted = unsigned << (j * 8); //accumulate values of all bytes per pixel
+						val += shifted;
+					}
+
+					//compute x and y position
+					int x = i % _w;
+					int y = i / _w;
+
+					//set value
+					_intensity_arr[x][y] = val;
+				}
+
+				//pixel data is last element, stop
 				break;
 			}
 		}
+	}
+
+	public int[][] get_intensity_arr(){
+		return _intensity_arr;
+	}
+
+	public int get_intensity(int x, int y){ // x is width, y is height
+		return _intensity_arr[x][y];
+	}
+
+	public int get_greyscale(int x, int y){ // x is width, y is height
+		return intensity_to_greyscale(get_intensity(x, y));
+	}
+
+	/**
+	 * Normalizes intensity to 0-255 greyscale
+	 * @param intensity intensity
+	 * @return The scaled and normalized Intensity
+	 */
+	public int intensity_to_greyscale(int intensity){
+		// get byte storage format
+		int bits_stored = getBitsStored();
+
+		// init center and width if not given
+		if (!_window_center_given) _window_center = (int) Math.pow(2, (float)(bits_stored - 1));
+		if (!_window_width_given) _window_width = (int) Math.pow(2, bits_stored);
+
+		//apply scaling
+		int scaled = intensity * _slope + _intercept;
+
+		//normalize to 0-255
+		int normalized;
+		int scaled_center = _window_center * _slope + _intercept;
+		double lower_bound = scaled_center - _window_width / 2.0;
+		double upper_bound = scaled_center + _window_width / 2.0;
+		if (scaled <= lower_bound){
+			normalized = 0;
+		} else if (scaled > upper_bound){
+			normalized = 255;
+		} else {
+			normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+		}
+
+		return normalized;
 	}
 
 	/**
@@ -91,6 +212,31 @@ public class DiFile {
 
         return str;
 	}
+
+	public int get_window_center() {
+		return _window_center;
+	}
+
+	public int get_window_width() {
+		return _window_width;
+	}
+
+	public int get_slope() {
+		return _slope;
+	}
+
+	public int get_intercept() {
+		return _intercept;
+	}
+
+	public int get_high_bit() {
+		return _high_bit;
+	}
+
+	public String get_format() {
+		return _format; // whitespace is already removed
+	}
+
 
 	/**
 	 * Returns the number of allocated bits per pixel.
