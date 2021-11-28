@@ -246,7 +246,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 			}
 
 			//get intercept, slope, window-center, window-width
-			int window_center = (int) Math.pow(2, (float)(bits_stored / 2)); //default center is half of stored bits
+			int window_center = (int) Math.pow(2, (float)(bits_stored - 1)); //default center is half of stored bits
 			int window_width = (int) Math.pow(2, bits_stored); //default window is whole range
 			int intercept = 0;
 			int slope = 1;
@@ -297,8 +297,9 @@ public class Viewport2d extends Viewport implements MyObserver {
 
 				//normalize to 0-255
 				int normalized;
-				double lower_bound = window_center - window_width / 2.0;
-				double upper_bound = window_center + window_width / 2.0;
+				double scaled_center = window_center * slope + intercept;
+				double lower_bound = scaled_center - window_width / 2.0;
+				double upper_bound = scaled_center + window_width / 2.0;
 				if (scaled <= lower_bound){
 					normalized = 0;
 				} else if (scaled > upper_bound){
