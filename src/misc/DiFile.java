@@ -153,6 +153,16 @@ public class DiFile {
 		return intensity_to_greyscale(get_intensity(x, y));
 	}
 
+	public boolean is_in_range(int min, int max, int x, int y){
+		// min, max in [0, 100]
+		int intensity = get_intensity(x, y);
+		return intensity >= min && intensity <= max;
+	}
+
+	public int get_max_val(){
+		return (int) Math.pow(2, _bits_stored);
+	}
+
 	/**
 	 * Normalizes intensity to 0-255 greyscale
 	 * @param intensity intensity

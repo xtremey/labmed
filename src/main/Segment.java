@@ -37,6 +37,22 @@ public class Segment {
 		}
 	}
 
+	public void create_range_seg(int min, int max, ImageStack slices){
+		for( int i = 0; i < slices.getNumberOfImages(); i++){
+			BitMask mask = _layers[i];
+			for( int y = 0; y < _h; y++){
+				for( int x = 0; x < _w; x++){
+					mask.set(x,y, slices.getDiFile(i).is_in_range(min, max, x, y));
+				}
+			}
+		}
+	}
+
+	public boolean is_in_mask(int x, int y, int z){
+		BitMask mask = _layers[z];
+		return mask.get(x,y);
+	}
+
 	/**
 	 * Returns the number of bitmasks contained in this segment.
 	 * 

@@ -23,6 +23,7 @@ public class ImageStack extends MyObservable {
 	private HashMap<String, Segment> _segment_map = new HashMap<>();
 	private String _dir_name = "";
 	private int _w, _h, _active = 0;
+	private int _max_val;
 
 	/**
 	 * Default Constructor.
@@ -142,6 +143,7 @@ public class ImageStack extends MyObservable {
 					// initialize default image width and heigth from the first image read
 					if (_w==0) _w = df.getImageWidth();
 					if (_h==0) _h = df.getImageHeight();
+					if (_max_val == 0) _max_val = df.get_max_val();
 
 				    notifyObservers(new Message(Message.M_NEW_IMAGE_LOADED));					
 				}
@@ -179,6 +181,11 @@ public class ImageStack extends MyObservable {
 	public int get_intensity(int x, int y, int z){ // x is width, y is height, z is image number
 		return getDiFile(z).get_intensity(x, y);
 	}
+
+	public int get_max_val(){
+		return _max_val;
+	}
+
 
 	public int get_greyscale(int x, int y, int z){ // x is width, y is height, z is image number
 		return getDiFile(z).get_greyscale(x, y);

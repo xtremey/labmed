@@ -23,6 +23,7 @@ import misc.DiFile;
 import misc.MyObservable;
 import misc.MyObserver;
 import misc.ViewMode;
+import misc.BitMask;
 
 /**
  * Two dimensional viewport for viewing the DICOM images + segmentations.
@@ -230,6 +231,8 @@ public class Viewport2d extends Viewport implements MyObserver {
 						int greyscale = _slices.get_greyscale(x, y, z);
 						int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
 						_bg_img.setRGB(x, y, argb);
+
+
 					}
 				}
 			}
@@ -282,6 +285,62 @@ public class Viewport2d extends Viewport implements MyObserver {
 			// with ARGB values similar to exercise 2
 		}
 		*/
+
+		for (String seg_name : _map_seg_name_to_img.keySet()) {
+			BufferedImage seg_img = _map_seg_name_to_img.get(seg_name);
+//			int[] seg_pixels = ((DataBufferInt) seg_img.getRaster().getDataBuffer()).getData();
+
+			Segment seg = _slices.getSegment(seg_name);
+			int alpha = 128;
+
+			if(_view_mode == ViewMode.TRANSVERSAL){
+				int z = _slices.getActiveImageID();
+				for (int y = 0; y < _w; y++) {
+					for (int x = 0; x < _h; x++) {
+						boolean is_in_mask = seg.is_in_mask(x,y,z);
+						if( is_in_mask){
+							int color = (alpha<<24) + (0x00ffffff & seg.getColor());
+							seg_img.setRGB(x, y, color);
+						}
+						else{
+							seg_img.setRGB(x, y, 0x00000000);
+						}
+					}
+				}
+			} else if (_view_mode == ViewMode.SAGITTAL) {
+				int x = _slices.getActiveImageID();
+				for (int y = 0; y < _w; y++){
+					for (int z = 0; z < _h; z++){
+						boolean is_in_mask = seg.is_in_mask(x,y,z);
+						if( is_in_mask){
+							int color = (alpha<<24) + (0x00ffffff & seg.getColor());
+							seg_img.setRGB(y, z, color);
+						}
+						else{
+							seg_img.setRGB(y, z, 0x00000000);
+						}
+					}
+				}
+
+			} else if (_view_mode == ViewMode.FRONTAL){
+				int y = _slices.getActiveImageID();
+
+				//iterate over pixel values
+				for (int x = 0; x < _w; x++){
+					for (int z = 0; z < _h; z++){
+						boolean is_in_mask = seg.is_in_mask(x,y,z);
+						if( is_in_mask){
+							int color = (alpha<<24) + (0x00ffffff & seg.getColor());
+							seg_img.setRGB(x, z, color);
+						}
+						else{
+							seg_img.setRGB(x, z, 0x00000000);
+						}
+					}
+				}
+			}
+		}
+
 
 		repaint();
 	}

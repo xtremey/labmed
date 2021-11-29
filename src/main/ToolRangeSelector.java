@@ -23,8 +23,7 @@ public class ToolRangeSelector extends JPanel  {
 	/**
 	 * Default Constructor. Creates the GUI element and connects it to a
 	 * segmentation.
-	 * 
-	 * @param slices	the global image stack
+	 *
 	 * @param seg		the segmentation to be modified
 	 */
 	public ToolRangeSelector(Segment seg) {
@@ -57,9 +56,9 @@ public class ToolRangeSelector extends JPanel  {
 
 		// range_max needs to be calculated from the bits_stored value
 		// in the current dicom series
-		int range_max = 100;
-		_min = 50;
-		_max = 50;
+		int range_max = slices.get_max_val();
+		_min = (int) range_max / 2;
+		_max = (int) range_max / 2;
 		
 		_min_label = new JLabel("Min:");
 		_max_label = new JLabel("Max:");
@@ -71,6 +70,8 @@ public class ToolRangeSelector extends JPanel  {
 				if (source.getValueIsAdjusting()) {
 					_min = (int)source.getValue();
 					System.out.println("_min_slider stateChanged: "+_min);
+					_seg.create_range_seg(_min, _max, slices);
+					LabMed.get_v2d().update_view();
 				}
 			}
 		});		
@@ -82,6 +83,9 @@ public class ToolRangeSelector extends JPanel  {
 				if (source.getValueIsAdjusting()) {
 					_max = (int)source.getValue();
 					System.out.println("_max_slider stateChanged: "+_max);
+					_seg.create_range_seg(_min, _max, slices);
+					LabMed.get_v2d().update_view();
+
 				}
 			}
 		});
