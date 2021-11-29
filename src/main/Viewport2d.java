@@ -19,10 +19,10 @@ import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import misc.DiDataElement;
 import misc.DiFile;
 import misc.MyObservable;
 import misc.MyObserver;
+import misc.ViewMode;
 
 /**
  * Two dimensional viewport for viewing the DICOM images + segmentations.
@@ -49,6 +49,9 @@ public class Viewport2d extends Viewport implements MyObserver {
 	// width and heigth of our images. dont mix those with
 	// Viewport2D width / height or Panel2d width / height!
 	private int _w, _h;
+
+	// store the current viewmode
+	private ViewMode _view_mode = ViewMode.TRANSVERSAL;
 
 	/**
 	 * Private class, implementing the GUI element for displaying the 2d data.
@@ -335,6 +338,20 @@ public class Viewport2d extends Viewport implements MyObserver {
 	 */
 	public void setViewMode(int mode) {
 		// you should do something with the new viewmode here
-		System.out.println("Viewmode "+mode);
+		switch (mode){
+			case 1: {
+				_view_mode = ViewMode.SAGITTAL;
+				break;
+			}
+			case 2: {
+				_view_mode = ViewMode.FRONTAL;
+				break;
+			}
+			default: {
+				_view_mode = ViewMode.TRANSVERSAL;
+				break;
+			}
+		}
+		update_view();
 	}
 }
