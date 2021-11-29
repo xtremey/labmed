@@ -322,7 +322,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 						int window_width){
 
 		int[] result = new int[pixel_bytes.length / byte_per_pixel];
-		for(int i = 0; i < pixel_bytes.length; i += byte_per_pixel ){
+		for(int i = 0; i < pixel_bytes.length / byte_per_pixel; i++ ){
 			int val = 0;
 			//iterate over bytes per pixel
 			for (int j = 0; j < byte_per_pixel; j++) {
