@@ -167,8 +167,16 @@ public class Viewport2d extends Viewport implements MyObserver {
 	 * (see e.g. exercise 2)
 	 */
 	private void reallocate() {
-		_w = _slices.getImageWidth();
-		_h = _slices.getImageHeight();
+		if (_view_mode == ViewMode.TRANSVERSAL){
+			_w = _slices.getImageWidth();
+			_h = _slices.getImageHeight();
+		} else if (_view_mode == ViewMode.SAGITTAL){
+			_w = _slices.getImageHeight();
+			_h = _slices.getNumberOfImages();
+		} else if (_view_mode == ViewMode.FRONTAL){
+			_w = _slices.getImageWidth();
+			_h = _slices.getNumberOfImages();
+		}
 		
 		// create background image
 		_bg_img = new BufferedImage(_w, _h, BufferedImage.TYPE_INT_ARGB);
@@ -187,6 +195,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 	 * @see Viewport#update_view()
 	 */
 	public void update_view() {
+		reallocate();
 		if (_slices.getNumberOfImages() == 0) {
 			return;
 		}
@@ -209,15 +218,45 @@ public class Viewport2d extends Viewport implements MyObserver {
 			//                                AARRGGBB
 			// the resulting image will be used in the Panel2d::paint() method
 
-			//get active file
-			int z = _slices.getActiveImageID();
 
-			//iterate over pixel values
-			for (int y = 0; y < _w; y++){
-				for (int x = 0; x < _h; x++){
-					int greyscale = _slices.get_greyscale(x, y, z);
-					int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
-					_bg_img.setRGB(x, y, argb);
+
+			if(_view_mode == ViewMode.TRANSVERSAL){
+				//get active file
+				int z = _slices.getActiveImageID();
+
+				//iterate over pixel values
+				for (int y = 0; y < _w; y++){
+					for (int x = 0; x < _h; x++){
+						int greyscale = _slices.get_greyscale(x, y, z);
+						int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+						_bg_img.setRGB(x, y, argb);
+					}
+				}
+			}
+			else if(_view_mode == ViewMode.SAGITTAL){
+				//get active file
+				int x = _slices.getActiveImageID();
+
+				//iterate over pixel values
+				for (int y = 0; y < _w; y++){
+					for (int z = 0; z < _h; z++){
+						int greyscale = _slices.get_greyscale(x, y, z);
+						int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+						_bg_img.setRGB(y, z, argb);
+					}
+				}
+			}
+			else if(_view_mode == ViewMode.FRONTAL){
+				//get active file
+				int y = _slices.getActiveImageID();
+
+				//iterate over pixel values
+				for (int x = 0; x < _w; x++){
+					for (int z = 0; z < _h; z++){
+						int greyscale = _slices.get_greyscale(x, y, z);
+						int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+						_bg_img.setRGB(x, z, argb);
+					}
 				}
 			}
 
@@ -341,14 +380,26 @@ public class Viewport2d extends Viewport implements MyObserver {
 		switch (mode){
 			case 1: {
 				_view_mode = ViewMode.SAGITTAL;
+				update(_slices, new Message(Message.M_CLEAR));
+				for(int i = 0; i < _slices.getImageWidth(); i++) {
+					update(_slices, new Message(Message.M_NEW_IMAGE_LOADED));
+				}
 				break;
 			}
 			case 2: {
 				_view_mode = ViewMode.FRONTAL;
+				update(_slices, new Message(Message.M_CLEAR));
+				for(int i = 0; i < _slices.getImageHeight(); i++) {
+					update(_slices, new Message(Message.M_NEW_IMAGE_LOADED));
+				}
 				break;
 			}
 			default: {
 				_view_mode = ViewMode.TRANSVERSAL;
+				update(_slices, new Message(Message.M_CLEAR));
+				for(int i = 0; i < _slices.getNumberOfImages(); i++) {
+					update(_slices, new Message(Message.M_NEW_IMAGE_LOADED));
+				}
 				break;
 			}
 		}
