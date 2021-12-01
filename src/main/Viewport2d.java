@@ -178,7 +178,10 @@ public class Viewport2d extends Viewport implements MyObserver {
 			_w = _slices.getImageWidth();
 			_h = _slices.getNumberOfImages();
 		}
-		
+
+		//sanity check, should never occur
+		if(_w <= 0 || _h <= 0) return;
+
 		// create background image
 		_bg_img = new BufferedImage(_w, _h, BufferedImage.TYPE_INT_ARGB);
 

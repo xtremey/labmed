@@ -31,8 +31,7 @@ public class MenuBar extends JMenuBar {
 	/**
 	 * Constructor. Needs many references, since the MenuBar has to trigger a
 	 * lot of functions.
-	 * 
-	 * @param slices	the global image stack reference
+	 *
 	 * @param v2d		the Viewport2d reference
 	 * @param v3d		the Viewport3d reference
 	 * @param tools		the ToolPane reference
@@ -90,17 +89,20 @@ public class MenuBar extends JMenuBar {
 
 		rbMenuItem = new JRadioButtonMenuItem("Transversal");
 		rbMenuItem.addActionListener(setViewModeListener);
+		rbMenuItem.setEnabled(false);
 		group.add(rbMenuItem);
 		_menu2d.add(rbMenuItem);
 		rbMenuItem.setSelected(true);
 
 		rbMenuItem = new JRadioButtonMenuItem("Sagittal");
 		rbMenuItem.addActionListener(setViewModeListener);
+		rbMenuItem.setEnabled(false);
 		group.add(rbMenuItem);
 		_menu2d.add(rbMenuItem);
 
 		rbMenuItem = new JRadioButtonMenuItem("Frontal");
 		rbMenuItem.addActionListener(setViewModeListener);
+		rbMenuItem.setEnabled(false);
 		group.add(rbMenuItem);
 		_menu2d.add(rbMenuItem);
 
@@ -209,6 +211,11 @@ public class MenuBar extends JMenuBar {
 				}
 				System.out.println(file.getParent());
 				LabMed.get_is().initFromDirectory(file.getParent());
+
+				//enable different views after dicom file was successfully loaded
+				_menu2d.getItem(3).setEnabled(true);
+				_menu2d.getItem(4).setEnabled(true);
+				_menu2d.getItem(5).setEnabled(true);
 			}		
 		}
 		
