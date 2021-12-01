@@ -407,7 +407,13 @@ public class Viewport2d extends Viewport implements MyObserver {
 	 * @return the currently displayed dicom file
 	 */
 	public DiFile currentFile() {
-		return _slices.getDiFile(_slices.getActiveImageID());
+		if(_view_mode == ViewMode.TRANSVERSAL){
+			return _slices.getDiFile(_slices.getActiveImageID());
+		} else {
+			// in sagittal and frontal all files are used. Just return the first file
+			return _slices.getDiFile(0);
+		}
+
 	}
 
 	/**
