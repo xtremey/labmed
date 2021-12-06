@@ -149,9 +149,6 @@ public class DiFile {
 		return _intensity_arr[x][y];
 	}
 
-	public int get_greyscale(int x, int y){ // x is width, y is height
-		return intensity_to_greyscale(get_intensity(x, y));
-	}
 
 	public boolean is_in_range(int min, int max, int x, int y){
 		// min, max in [0, 100]
@@ -163,37 +160,7 @@ public class DiFile {
 		return (int) Math.pow(2, _bits_stored);
 	}
 
-	/**
-	 * Normalizes intensity to 0-255 greyscale
-	 * @param intensity intensity
-	 * @return The scaled and normalized Intensity
-	 */
-	public int intensity_to_greyscale(int intensity){
-		// get byte storage format
-		int bits_stored = getBitsStored();
 
-		// init center and width if not given
-		if (!_window_center_given) _window_center = (int) Math.pow(2, (float)(bits_stored - 1));
-		if (!_window_width_given) _window_width = (int) Math.pow(2, bits_stored);
-
-		//apply scaling
-		int scaled = intensity * _slope + _intercept;
-
-		//normalize to 0-255
-		int normalized;
-		int scaled_center = _window_center * _slope + _intercept;
-		double lower_bound = scaled_center - _window_width / 2.0;
-		double upper_bound = scaled_center + _window_width / 2.0;
-		if (scaled <= lower_bound){
-			normalized = 0;
-		} else if (scaled > upper_bound){
-			normalized = 255;
-		} else {
-			normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
-		}
-
-		return normalized;
-	}
 
 	/**
 	 * Converts a dicom file into a human readable string info. Might be long.
@@ -313,5 +280,14 @@ public class DiFile {
 	 */
 	public int getImageNumber() {
 		return _image_number;
+	}
+
+
+	public boolean is_window_center_given() {
+		return _window_center_given;
+	}
+
+	public boolean is_window_width_given() {
+		return _window_width_given;
 	}
 }
