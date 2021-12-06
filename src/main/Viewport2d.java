@@ -54,6 +54,8 @@ public class Viewport2d extends Viewport implements MyObserver {
 	// store the current viewmode
 	private ViewMode _view_mode = ViewMode.TRANSVERSAL;
 
+	private int[] _seed_pixel = new int[3];;
+
 	/**
 	 * Private class, implementing the GUI element for displaying the 2d data.
 	 * Implements the MouseListener Interface.
@@ -71,6 +73,22 @@ public class Viewport2d extends Viewport implements MyObserver {
 
 		public void mouseClicked ( java.awt.event.MouseEvent e ) { 
 			System.out.println("Panel2d::mouseClicked: x="+e.getX()+" y="+e.getY());
+			int y = e.getY() * _h / super.getHeight();
+			int x = e.getX() * _w / super.getWidth();
+			System.out.println("x: " + x + ", y: " + y);
+			if(_view_mode == ViewMode.TRANSVERSAL){
+				_seed_pixel[0] = x;
+				_seed_pixel[1] = y;
+				_seed_pixel[2] = _slices.getActiveImageID();
+			} else if (_view_mode == ViewMode.SAGITTAL){
+				_seed_pixel[0] = _slices.getActiveImageID();
+				_seed_pixel[1] = x;
+				_seed_pixel[2] = y;
+			} else if (_view_mode == ViewMode.FRONTAL){
+				_seed_pixel[0] = x;
+				_seed_pixel[1] = _slices.getActiveImageID();
+				_seed_pixel[2] = y;
+			}
 		}
 		public void mousePressed ( java.awt.event.MouseEvent e ) {}
 		public void mouseReleased( java.awt.event.MouseEvent e ) {}
@@ -472,5 +490,9 @@ public class Viewport2d extends Viewport implements MyObserver {
 			}
 		}
 		update_view();
+	}
+
+	public int[] get_seed_pixel() {
+		return _seed_pixel;
 	}
 }

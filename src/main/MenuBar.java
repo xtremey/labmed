@@ -129,8 +129,12 @@ public class MenuBar extends JMenuBar {
 		
 		// -------------------------------------------------------------------------------------
 
-		item = new JMenuItem(new String("Neue Segmentierung"));
+		item = new JMenuItem(new String("Neue MinMax-Segmentierung"));
 		item.addActionListener(newSegmentListener);
+		_menuTools.add(item);
+
+		item = new JMenuItem(new String("Neue Region-Segmentierung"));
+		item.addActionListener(newRegionSegmentListener);
 		_menuTools.add(item);
 
 		item = new JMenuItem(new String("Set Center / Width"));
@@ -337,6 +341,41 @@ public class MenuBar extends JMenuBar {
 					item.addActionListener(toggleSegListener3d);
 					_menu3d.add(item);
 					_tools.showTool(new ToolRangeSelector(seg));
+				}
+			}
+		}
+	};
+
+	/**
+	 * ActionListener for adding a new segmentation to the global image stack.
+	 */
+	ActionListener newRegionSegmentListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"Segmentierung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else if (is.getSegmentNumber()==3) {
+				JOptionPane.showMessageDialog(_win,
+						"In der Laborversion werden nicht mehr als drei Segmentierungen benötigt.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				String name = JOptionPane.showInputDialog(_win, "Name der Segmentierung");
+				if (name != null) {
+					_no_entries2d.setVisible(false);
+					_no_entries3d.setVisible(false);
+					Segment seg = is.createSegment(name);
+					_v2d.toggleSeg(seg);
+					JMenuItem item = new JCheckBoxMenuItem(name, true);
+					item.addActionListener(toggleSegListener2d);
+					_menu2d.add(item);
+					item = new JCheckBoxMenuItem(name, false);
+					item.addActionListener(toggleSegListener3d);
+					_menu3d.add(item);
+					_tools.showTool(new ToolRegionSelector(seg));
 				}
 			}
 		}
