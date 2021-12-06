@@ -16,9 +16,11 @@ import java.awt.*;
 public class ToolRegionSelector extends JPanel  {
 	private static final long serialVersionUID = 1L;
 	private int _variance;
+	private int[] _seed_pixel;
 	private Segment _seg;
 	private JList<String> _seg_list;
 	private JSlider _variance_slider;
+	private JButton _seg_start_button;
 	private JLabel _range_sel_title, _variance_label;
 
 	/**
@@ -64,15 +66,30 @@ public class ToolRegionSelector extends JPanel  {
 		
 		_variance_slider = new JSlider(0, range_max, _variance);
 
-		int[] seed_pixel = LabMed.get_v2d().get_seed_pixel();
+		_seg_start_button = new JButton("Create Segmentation");
+
+		_seg_start_button.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent e) {
+				JButton source = (JButton) e.getSource();
+				if (source.getModel().isPressed()) {
+					_seed_pixel = LabMed.get_v2d().get_seed_pixel();
+					System.out.println("_variance_slider stateChanged: "+_variance);
+					_seg.create_region_segment(_seed_pixel, _variance, slices);
+					LabMed.get_v2d().update_view();
+				}
+			}
+		});
+
+
 		_variance_slider.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
 				if (source.getValueIsAdjusting()) {
+//					_seed_pixel = LabMed.get_v2d().get_seed_pixel();
 					_variance = (int)source.getValue();
 					System.out.println("_variance_slider stateChanged: "+_variance);
-					_seg.create_region_segment(seed_pixel, _variance, slices);
-					LabMed.get_v2d().update_view();
+//					_seg.create_region_segment(_seed_pixel, _variance, slices);
+//					LabMed.get_v2d().update_view();
 				}
 			}
 		});
@@ -95,8 +112,9 @@ public class ToolRegionSelector extends JPanel  {
 		c.gridwidth=1;
 
 		c.weightx = 0;
-		c.gridx = 1; c.gridy = 1; this.add(_variance_label, c);
-		c.gridx = 1; c.gridy = 2; this.add(_variance_slider, c);
+		c.gridx = 1; c.gridy = 1; this.add(_seg_start_button, c);
+		c.gridx = 1; c.gridy = 2; this.add(_variance_label, c);
+		c.gridx = 1; c.gridy = 3; this.add(_variance_slider, c);
 
 		// setBackground(Color.blue);
 	}	
