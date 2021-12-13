@@ -5,6 +5,12 @@ import misc.BitMask;
 import java.util.*;
 
 
+enum SegmentType {
+	RANGE,
+	REGION
+}
+
+
 /**
  * This class represents a segment. Simply spoken, a segment has a unique name,
  * a color for displaying in the 2d/3d viewport and contains n bitmasks where n is the
@@ -18,6 +24,7 @@ public class Segment {
 	private int _w;				// Bitmask width				
 	private int _h;				// Bitmask height
 	private BitMask[] _layers;	// each segment contains an array of n bitmasks
+	private SegmentType _segment_type = null;
 	
 	/**
 	 * Constructor for new segment objects.
@@ -41,6 +48,7 @@ public class Segment {
 	}
 
 	public void create_range_seg(int min, int max, ImageStack slices){
+		_segment_type = SegmentType.RANGE;
 		for( int i = 0; i < slices.getNumberOfImages(); i++){
 			BitMask mask = _layers[i];
 			for( int y = 0; y < _h; y++){
@@ -68,6 +76,7 @@ public class Segment {
 
 
 	public void create_region_segment(int[] seed_pixel, int variance, ImageStack slices){
+		_segment_type = SegmentType.REGION;
 		//clear old segmentation
 		for (int i = 0; i < slices.getNumberOfImages(); i++){
 			_layers[i].clear();
