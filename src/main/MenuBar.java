@@ -332,7 +332,7 @@ public class MenuBar extends JMenuBar {
 				if (name != null) {
 					_no_entries2d.setVisible(false);
 					_no_entries3d.setVisible(false);
-					Segment seg = is.createSegment(name);
+					Segment seg = is.createSegment(name, SegmentType.RANGE);
 					_v2d.toggleSeg(seg);
 					JMenuItem item = new JCheckBoxMenuItem(name, true);
 					item.addActionListener(toggleSegListener2d);
@@ -367,7 +367,7 @@ public class MenuBar extends JMenuBar {
 				if (name != null) {
 					_no_entries2d.setVisible(false);
 					_no_entries3d.setVisible(false);
-					Segment seg = is.createSegment(name);
+					Segment seg = is.createSegment(name, SegmentType.REGION);
 					_v2d.toggleSeg(seg);
 					JMenuItem item = new JCheckBoxMenuItem(name, true);
 					item.addActionListener(toggleSegListener2d);

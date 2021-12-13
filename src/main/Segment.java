@@ -21,7 +21,7 @@ enum SegmentType {
 public class Segment {
 	private String _name;		// the segment name
 	private int _color;			// the segment color
-	private int _w;				// Bitmask width				
+	private int _w;				// Bitmask width
 	private int _h;				// Bitmask height
 	private BitMask[] _layers;	// each segment contains an array of n bitmasks
 	private SegmentType _segment_type = null;
@@ -34,11 +34,11 @@ public class Segment {
 	 * @param h				the height of the bitmasks
 	 * @param layer_num		the total number of bitmasks
 	 */
-	public Segment(String name, int w, int h, int layer_num) {
+	public Segment(String name, int w, int h, int layer_num, SegmentType type) {
 		this._name = name;
 		this._w = w;
 		this._h = h;
-		
+		this._segment_type = type;
 		_color = 0xff00ff;		
 		_layers = new BitMask[layer_num];
 		
@@ -48,7 +48,6 @@ public class Segment {
 	}
 
 	public void create_range_seg(int min, int max, ImageStack slices){
-		_segment_type = SegmentType.RANGE;
 		for( int i = 0; i < slices.getNumberOfImages(); i++){
 			BitMask mask = _layers[i];
 			for( int y = 0; y < _h; y++){
@@ -76,7 +75,6 @@ public class Segment {
 
 
 	public void create_region_segment(int[] seed_pixel, int variance, ImageStack slices){
-		_segment_type = SegmentType.REGION;
 		//clear old segmentation
 		for (int i = 0; i < slices.getNumberOfImages(); i++){
 			_layers[i].clear();
@@ -182,5 +180,9 @@ public class Segment {
 	 */
 	public void setColor(int color) {
 		_color = color;
+	}
+
+	public SegmentType get_segment_type() {
+		return _segment_type;
 	}
 }

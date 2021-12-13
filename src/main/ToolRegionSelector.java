@@ -35,14 +35,14 @@ public class ToolRegionSelector extends JPanel  {
 		final ImageStack slices = ImageStack.getInstance();		
 		JLabel seg_sel_title = new JLabel ("Edit Segmentation");
 		
-		_seg_list = new JList<String>(slices.getSegNames());
-		_seg_list.setSelectedIndex(slices.getSegNames().indexOf(seg.getName()));
+		_seg_list = new JList<String>(slices.getSegNamesByType(SegmentType.REGION));
+		_seg_list.setSelectedIndex(slices.getSegNamesByType(SegmentType.REGION).indexOf(seg.getName()));
 		_seg_list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
 		_seg_list.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent e) {
 				int seg_index = _seg_list.getSelectedIndex();
-				String name = (String)(slices.getSegNames().getElementAt(seg_index));
+				String name = (String)(slices.getSegNamesByType(SegmentType.REGION).getElementAt(seg_index));
 				if (!_seg.getName().equals(name)) {
 					_seg = slices.getSegment(name);
 					_range_sel_title.setText("Range Selector - "+_seg.getName());

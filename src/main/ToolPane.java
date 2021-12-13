@@ -40,9 +40,19 @@ public class ToolPane extends JPanel {
 			if (_range_selector == null){
 				_tab_pane.addTab("Range", panel);
 				_range_selector = panel;
+			} else {
+				this.remove(_range_selector);
+				_tab_pane.remove(_range_selector);
+				_tab_pane.addTab("Range", panel);
+				_range_selector = panel;
 			}
 		} else if (panel instanceof ToolRegionSelector){
 			if (_region_selector == null){
+				_tab_pane.addTab("Region", panel);
+				_region_selector = panel;
+			} else {
+				this.remove(_region_selector);
+				_tab_pane.remove(_region_selector);
 				_tab_pane.addTab("Region", panel);
 				_region_selector = panel;
 			}

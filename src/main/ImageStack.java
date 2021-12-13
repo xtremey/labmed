@@ -209,14 +209,14 @@ public class ImageStack extends MyObservable {
 	 * @param name	the name of the new segment (must be unique)
 	 * @return		the new segment or null if the name was not unique
 	 */
-	public Segment createSegment(String name) {
+	public Segment createSegment(String name, SegmentType type) {
 		Segment seg;
 
 		if (_segment_map.containsKey(name)) {
 			seg = null;
 		} else {
 			int[] def_colors = {0xff0000, 0x00ff00, 0x0000ff};
-			seg = new Segment(name, _w, _h, _dicom_files.length);
+			seg = new Segment(name, _w, _h, _dicom_files.length, type);
 			seg.setColor(def_colors[_segment_map.size()]);
 			_segment_map.put(name, seg);
 			_seg_names.addElement(name);
@@ -285,6 +285,19 @@ public class ImageStack extends MyObservable {
 	 */
 	public DefaultListModel<String> getSegNames() {
 		return _seg_names;
+	}
+
+	public DefaultListModel<String> getSegNamesByType( SegmentType type) {
+		DefaultListModel<String> result = new DefaultListModel<>();
+		for(int i = 0; i < _seg_names.size(); i++ ){
+			String name = _seg_names.get(i);
+			Segment current_segment = _segment_map.get(name);
+			if(current_segment.get_segment_type() == type) {
+				result.addElement(name);
+			}
+
+		}
+		return result;
 	}
 
 	/**
