@@ -120,9 +120,6 @@ public class DiFile {
 						byte raw = pixel_bytes[i * byte_per_pixel + j];
 						int unsigned = (int) (raw & 0xff);
 
-						//ignore bits with no information, for given dataset not relevant: all zeros anyway
-						if (unsigned > highest_last_byte_val) unsigned = highest_last_byte_val;
-
 						int shifted = unsigned << (j * 8); //accumulate values of all bytes per pixel
 						val += shifted;
 					}

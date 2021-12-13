@@ -61,14 +61,15 @@ public class ImageStack extends MyObservable {
 		//normalize to 0-255
 		int normalized;
 		int scaled_center = _window_center * df.get_slope() + df.get_intercept();
-		double lower_bound = scaled_center - _window_width / 2.0;
-		double upper_bound = scaled_center + _window_width / 2.0;
+		double lower_bound = _window_center - 0.5 - (_window_width - 1) / 2.0;
+		double upper_bound = _window_center - 0.5 + (_window_width - 1) / 2.0;
 		if (scaled <= lower_bound){
 			normalized = 0;
 		} else if (scaled > upper_bound){
 			normalized = 255;
 		} else {
-			normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+//			normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+			normalized = (int) Math.round(((scaled - _window_center - 0.5) / (_window_width - 1) + 0.5) * 255);
 		}
 
 		return normalized;
