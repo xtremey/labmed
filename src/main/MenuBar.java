@@ -140,6 +140,10 @@ public class MenuBar extends JMenuBar {
 		item = new JMenuItem(new String("Set Center / Width"));
 		item.addActionListener(newWindowListener);
 		_menuTools.add(item);
+
+		item = new JMenuItem(new String("Set Point Distance"));
+		item.addActionListener(newPointDistanceListener);
+		_menuTools.add(item);
 		// -------------------------------------------------------------------------------------
 
 		add(_menuFile);
@@ -400,6 +404,22 @@ public class MenuBar extends JMenuBar {
 				_no_entries2d.setVisible(false);
 				_no_entries3d.setVisible(false);
 				_tools.showTool(new ToolWindowSelector());
+			}
+		}
+	};
+
+	ActionListener newPointDistanceListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"PointDistance-Einstellung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				_no_entries2d.setVisible(false);
+				_no_entries3d.setVisible(false);
+				_tools.showTool(new ToolPointDistanceSelector());
 			}
 		}
 	};

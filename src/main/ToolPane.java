@@ -17,6 +17,7 @@ public class ToolPane extends JPanel {
 	private JPanel _range_selector = null;
 	private JPanel _region_selector = null;
 	private JPanel _window_selector = null;
+	private JPanel _distance_selector = null;
 
 	/**
 	 * Default Constructor. Creates an empty ToolPane with no active panel.
@@ -61,6 +62,11 @@ public class ToolPane extends JPanel {
 			if (_window_selector == null) {
 				_tab_pane.addTab("Window", panel);
 				_window_selector = panel;
+			}
+		} else if (panel instanceof ToolPointDistanceSelector){
+			if (_distance_selector == null) {
+				_tab_pane.addTab("Distance", panel);
+				_distance_selector = panel;
 			}
 		}
 

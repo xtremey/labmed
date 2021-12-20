@@ -23,6 +23,15 @@ public class Viewport3d extends Viewport implements MyObserver  {
 	private static final long serialVersionUID = 1L;
 	private int _point_distance = 1;
 
+
+	public int get_point_distance() {
+		return _point_distance;
+	}
+
+	public void set_point_distance(int _point_distance) {
+		this._point_distance = _point_distance;
+	}
+
 	/**
 	 * Private class, implementing the GUI element for displaying the 3d data.
 	 */
