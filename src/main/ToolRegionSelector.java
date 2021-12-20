@@ -76,6 +76,7 @@ public class ToolRegionSelector extends JPanel  {
 					System.out.println("_variance_slider stateChanged: "+_variance);
 					_seg.create_region_segment(_seed_pixel, _variance, slices);
 					LabMed.get_v2d().update_view();
+					LabMed.get_v3d().update_view();
 				}
 			}
 		});

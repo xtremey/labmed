@@ -72,6 +72,7 @@ public class ToolRangeSelector extends JPanel  {
 					System.out.println("_min_slider stateChanged: "+_min);
 					_seg.create_range_seg(_min, _max, slices);
 					LabMed.get_v2d().update_view();
+					LabMed.get_v3d().update_view();
 				}
 			}
 		});		
@@ -85,7 +86,7 @@ public class ToolRangeSelector extends JPanel  {
 					System.out.println("_max_slider stateChanged: "+_max);
 					_seg.create_range_seg(_min, _max, slices);
 					LabMed.get_v2d().update_view();
-
+					LabMed.get_v3d().update_view();
 				}
 			}
 		});
