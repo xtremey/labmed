@@ -1,17 +1,16 @@
 package main;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.GraphicsConfiguration;
+import java.awt.*;
 
 import org.jogamp.java3d.*;
+import org.jogamp.java3d.utils.behaviors.mouse.MouseRotate;
+import org.jogamp.java3d.utils.behaviors.vp.OrbitBehavior;
 import org.jogamp.java3d.utils.geometry.ColorCube;
 import org.jogamp.java3d.utils.universe.SimpleUniverse;
 
 import misc.MyObservable;
 import misc.MyObserver;
+import org.jogamp.java3d.utils.universe.ViewingPlatform;
 import org.jogamp.vecmath.*;
 
 /**
@@ -98,11 +97,7 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			_scene = new BranchGroup();
 			_scene.setCapability( BranchGroup.ALLOW_DETACH );
 			
-			if(_map_name_to_seg.size() == 0){
-				// create a ColorCube object of size 0.5
-				ColorCube c = new ColorCube(0.5f);
-				_scene.addChild(c);
-			} else {
+			if(_map_name_to_seg.size() != 0){
 				double x = _slices.getImageWidth();
 				double y = _slices.getImageHeight();
 				double z = _slices.getNumberOfImages();
@@ -116,6 +111,14 @@ public class Viewport3d extends Viewport implements MyObserver  {
 				}
 
 				_scene.addChild(tg);
+
+				BoundingSphere bigBounds = new BoundingSphere(new Point3d(),1000);
+				OrbitBehavior orbit = new OrbitBehavior(this, OrbitBehavior.REVERSE_ROTATE);
+				orbit.setSchedulingBounds(bigBounds);
+				orbit.setRotationCenter(new Point3d(0, 0, 0.5));
+
+				ViewingPlatform vp = _simple_u.getViewingPlatform();
+				vp.setViewPlatformBehavior(orbit);
 			}
 
 			
