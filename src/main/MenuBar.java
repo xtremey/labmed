@@ -117,8 +117,12 @@ public class MenuBar extends JMenuBar {
 
 		item = new JMenuItem(new String("3d Item 1"));
 		// item.addActionListener(...);
-		item = new JCheckBoxMenuItem(new String("Show original Data"), false);		
-		item.addActionListener(toggleBGListener3d);		
+		item = new JCheckBoxMenuItem(new String("Show Orthogonal Slices"), false);
+		item.addActionListener(toggleOrthoSlices3d);
+		_menu3d.add(item);
+
+		item = new JCheckBoxMenuItem(new String("Show Volume Rendering"), false);
+		item.addActionListener(toggleVolumeRendering3d);
 		_menu3d.add(item);
 
 		_menu3d.addSeparator();		
@@ -293,6 +297,21 @@ public class MenuBar extends JMenuBar {
 			_v3d.toggleBG();
 		}
 	};
+
+	ActionListener toggleOrthoSlices3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_ortho_slices = !_v3d.show_ortho_slices;
+			_v3d.update_ortho_slices();
+		}
+	};
+
+	ActionListener toggleVolumeRendering3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_volume_render = !_v3d.show_volume_render;
+			_v3d.update_volume_rendering();
+		}
+	};
+
 
 	/**
 	 * ActionListener for toggling a segmentation in the 2d viewport.

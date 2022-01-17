@@ -24,6 +24,8 @@ public class Viewport3d extends Viewport implements MyObserver  {
 	private static final long serialVersionUID = 1L;
 	private int _point_distance = 1;
 
+	public boolean show_ortho_slices = false;
+	public boolean show_volume_render = false;
 
 	public int get_point_distance() {
 		return _point_distance;
@@ -79,17 +81,11 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			tg.setCapability(TransformGroup.ALLOW_CHILDREN_WRITE);
 			tg.setCapability(BranchGroup.ALLOW_DETACH);
 
-			BranchGroup bg_segments = new BranchGroup();
-			if(_map_name_to_seg.size() != 0) {
-				for (Segment s : _map_name_to_seg.values()) {
-					bg_segments.addChild(create_segment_point_cloud(s));
-				}
-
-			}
-			tg.insertChild(bg_segments, 0);
 
 			_scene.addChild(tg);
-			add_ortho_slices();
+			update_point_cloud();
+			update_ortho_slices();
+			update_volume_rendering();
 
 			BoundingSphere bigBounds = new BoundingSphere(new Point3d(),1000);
 			OrbitBehavior orbit = new OrbitBehavior(this, OrbitBehavior.REVERSE_ROTATE);
@@ -137,6 +133,25 @@ public class Viewport3d extends Viewport implements MyObserver  {
 		ap.setColoringAttributes(color_ca);
 
 		return new Shape3D(arr, ap);
+	}
+
+	public void update_point_cloud(){
+		TransformGroup tg = (TransformGroup) _panel3d._scene.getChild(0);
+
+		BranchGroup bg = new BranchGroup();
+		bg.setCapability(BranchGroup.ALLOW_DETACH);
+		bg.setCapability(BranchGroup.ALLOW_CHILDREN_WRITE);
+		if (_map_name_to_seg.size() != 0) {
+			for (Segment s : _map_name_to_seg.values()) {
+				bg.addChild(create_segment_point_cloud(s));
+			}
+		}
+
+		if (tg.numChildren() == 0){
+			tg.insertChild(bg, 0);
+		} else {
+			tg.setChild(bg, 0);
+		}
 	}
 
 	public Shape3D create_ortho_slices(ViewMode mode, int pos){
@@ -192,15 +207,52 @@ public class Viewport3d extends Viewport implements MyObserver  {
 		return square_shp;
 	}
 
-	private void add_ortho_slices(){
-		TransformGroup tg = (TransformGroup) _panel3d._scene.getChild(0);
+	private BranchGroup get_volume_rendering(){
+		BranchGroup bg = new BranchGroup();
 
+		for (int x = 0; x < _slices.getImageWidth(); x++) {
+			Shape3D shape = create_ortho_slices(ViewMode.SAGITTAL, x);
+			bg.addChild(shape);
+		}
+		for (int y = 0; y < _slices.getImageHeight(); y++) {
+			Shape3D shape = create_ortho_slices(ViewMode.FRONTAL, y);
+			bg.addChild(shape);
+		}
+		for (int z = 0; z < _slices.getNumberOfImages(); z++) {
+			Shape3D shape = create_ortho_slices(ViewMode.TRANSVERSAL, z);
+			bg.addChild(shape);
+		}
+
+		return bg;
+	}
+
+	public void update_volume_rendering(){
+		TransformGroup tg = (TransformGroup) _panel3d._scene.getChild(0);
 		BranchGroup bg = new BranchGroup();
 		bg.setCapability(BranchGroup.ALLOW_DETACH);
 		bg.setCapability(BranchGroup.ALLOW_CHILDREN_WRITE);
-		bg.addChild(create_ortho_slices(ViewMode.TRANSVERSAL, LabMed.get_v2d().active_transversal));
-		bg.addChild(create_ortho_slices(ViewMode.SAGITTAL, LabMed.get_v2d().active_saggital));
-		bg.addChild(create_ortho_slices(ViewMode.FRONTAL, LabMed.get_v2d().active_frontal));
+		if(show_volume_render){
+			bg.addChild(get_volume_rendering());
+		}
+		if (tg.numChildren() == 2){
+			tg.insertChild(bg, 2);
+		} else {
+			tg.setChild(bg, 2);
+		}
+	}
+
+	public void update_ortho_slices(){
+		TransformGroup tg = (TransformGroup) _panel3d._scene.getChild(0);
+
+		BranchGroup bg = new BranchGroup();
+
+		bg.setCapability(BranchGroup.ALLOW_DETACH);
+		bg.setCapability(BranchGroup.ALLOW_CHILDREN_WRITE);
+		if (show_ortho_slices){
+			bg.addChild(create_ortho_slices(ViewMode.TRANSVERSAL, LabMed.get_v2d().active_transversal));
+			bg.addChild(create_ortho_slices(ViewMode.SAGITTAL, LabMed.get_v2d().active_saggital));
+			bg.addChild(create_ortho_slices(ViewMode.FRONTAL, LabMed.get_v2d().active_frontal));
+		}
 
 		if (tg.numChildren() == 1){
 			tg.insertChild(bg, 1);
@@ -251,7 +303,7 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			String seg_name = ((Segment)(msg._obj)).getName();
 			boolean update_needed = _map_name_to_seg.containsKey(seg_name);
 			if (update_needed) {
-				update_view();
+				update_point_cloud();
 			}
 		}
 
@@ -259,7 +311,11 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			if (_panel3d._scene == null || _panel3d._scene.numChildren() == 0){
 				return;
 			}
-			add_ortho_slices();
+			update_ortho_slices();
+		}
+
+		if (msg._type == Message.M_NEW_IMAGE_LOADED) {
+			update_view();
 		}
 	}
 }

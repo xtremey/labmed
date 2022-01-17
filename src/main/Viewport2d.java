@@ -527,7 +527,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 			for (int x = 0; x < _slices.getImageWidth(); x++){
 				for (int z = 0; z < _slices.getNumberOfImages(); z++){
 					int greyscale = _slices.get_greyscale(x, pos, z);
-					int argb = (alpha<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+					int argb = (greyscale<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
 					img.setRGB(x, z, argb);
 				}
 			}
@@ -538,7 +538,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 		for (int y = 0; y < _slices.getImageHeight(); y++){
 			for (int z = 0; z < _slices.getNumberOfImages(); z++){
 				int greyscale = _slices.get_greyscale(pos, y, z);
-				int argb = (alpha<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+				int argb = (greyscale <<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
 				img.setRGB(y, z, argb);
 			}
 		}

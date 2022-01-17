@@ -19,6 +19,7 @@ public class ToolRangeSelector extends JPanel  {
 	private JList<String> _seg_list;
 	private JSlider _min_slider, _max_slider;
 	private JLabel _range_sel_title, _min_label, _max_label;
+	private JButton _seg_start_button;
 
 	/**
 	 * Default Constructor. Creates the GUI element and connects it to a
@@ -72,7 +73,6 @@ public class ToolRangeSelector extends JPanel  {
 					System.out.println("_min_slider stateChanged: "+_min);
 					_seg.create_range_seg(_min, _max, slices);
 					LabMed.get_v2d().update_view();
-					LabMed.get_v3d().update_view();
 				}
 			}
 		});		
@@ -86,6 +86,16 @@ public class ToolRangeSelector extends JPanel  {
 					System.out.println("_max_slider stateChanged: "+_max);
 					_seg.create_range_seg(_min, _max, slices);
 					LabMed.get_v2d().update_view();
+				}
+			}
+		});
+
+		_seg_start_button = new JButton("Show 3D Segmentation");
+
+		_seg_start_button.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent e) {
+				JButton source = (JButton) e.getSource();
+				if (source.getModel().isPressed()) {
 					LabMed.get_v3d().update_view();
 				}
 			}
@@ -109,10 +119,11 @@ public class ToolRangeSelector extends JPanel  {
 		c.gridwidth=1;
 
 		c.weightx = 0;
-		c.gridx = 1; c.gridy = 1; this.add(_min_label, c);
-		c.gridx = 1; c.gridy = 2; this.add(_max_label, c);
-		c.gridx = 2; c.gridy = 1; this.add(_min_slider, c);
-		c.gridx = 2; c.gridy = 2; this.add(_max_slider, c);
+		c.gridx = 1; c.gridy = 1; this.add(_seg_start_button, c);
+		c.gridx = 1; c.gridy = 2; this.add(_min_label, c);
+		c.gridx = 1; c.gridy = 3; this.add(_max_label, c);
+		c.gridx = 2; c.gridy = 2; this.add(_min_slider, c);
+		c.gridx = 2; c.gridy = 3; this.add(_max_slider, c);
 		
 		// setBackground(Color.blue);
 	}	
