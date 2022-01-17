@@ -508,7 +508,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 	}
 
 
-	public BufferedImage getBGImage(ViewMode mode, int pos){
+	public BufferedImage getBGImage(ViewMode mode, int pos, int alpha){
 
 		if (mode == ViewMode.TRANSVERSAL) {
 			BufferedImage img = new BufferedImage(_slices.getImageWidth(), _slices.getImageHeight(),
@@ -516,7 +516,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 			for (int y = 0; y < _slices.getImageWidth(); y++){
 				for (int x = 0; x < _slices.getImageHeight(); x++){
 					int greyscale = _slices.get_greyscale(x, y, pos);
-					int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+					int argb = ((greyscale <<24) + (greyscale<<16) + (greyscale<<8) + greyscale);
 					img.setRGB(x, y, argb);
 				}
 			}
@@ -527,7 +527,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 			for (int x = 0; x < _slices.getImageWidth(); x++){
 				for (int z = 0; z < _slices.getNumberOfImages(); z++){
 					int greyscale = _slices.get_greyscale(x, pos, z);
-					int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+					int argb = (alpha<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
 					img.setRGB(x, z, argb);
 				}
 			}
@@ -538,7 +538,7 @@ public class Viewport2d extends Viewport implements MyObserver {
 		for (int y = 0; y < _slices.getImageHeight(); y++){
 			for (int z = 0; z < _slices.getNumberOfImages(); z++){
 				int greyscale = _slices.get_greyscale(pos, y, z);
-				int argb = (0xff<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+				int argb = (alpha<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
 				img.setRGB(y, z, argb);
 			}
 		}

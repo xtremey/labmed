@@ -72,8 +72,8 @@ public class Viewport3d extends Viewport implements MyObserver  {
 				return;
 			}
 			Transform3D transform = new Transform3D();
-			transform.setScale(new Vector3d(1.0 / x , 1.0 / y, 1.0 / z));
-			transform.setTranslation(new Vector3d(-0.5, -0.5, 0));
+			transform.setScale(new Vector3d(1.0 / x , -1.0 / y, 1.0 / z));
+			transform.setTranslation(new Vector3d(-0.5, 0.5, 0));
 			TransformGroup tg = new TransformGroup(transform);
 			tg.setCapability(TransformGroup.ALLOW_CHILDREN_EXTEND);
 			tg.setCapability(TransformGroup.ALLOW_CHILDREN_WRITE);
@@ -172,17 +172,20 @@ public class Viewport3d extends Viewport implements MyObserver  {
 		sq.setTextureCoordinate(0, 1, new TexCoord2f(1.0f,1.0f));
 		sq.setTextureCoordinate(0, 0, new TexCoord2f(0.0f,1.0f));
 
-		BufferedImage img = LabMed.get_v2d().getBGImage(mode, pos);
+		BufferedImage img = LabMed.get_v2d().getBGImage(mode, pos, 128);
 		ImageComponent2D i2d = new ImageComponent2D(ImageComponent2D.FORMAT_RGBA, img);
 		Texture2D tex = new Texture2D(Texture2D.BASE_LEVEL,
 				Texture2D.RGBA, img.getWidth(), img.getHeight());
 		tex.setImage(0, i2d);
+
+		TransparencyAttributes ta = new TransparencyAttributes(TransparencyAttributes.NICEST, 0.7f);
 
 		Appearance ap_plane = new Appearance();
 		PolygonAttributes pa = new PolygonAttributes();
 		pa.setPolygonMode(PolygonAttributes.POLYGON_FILL);
 		pa.setCullFace(PolygonAttributes.CULL_NONE);
 		ap_plane.setPolygonAttributes(pa);
+		ap_plane.setTransparencyAttributes(ta);
 		ap_plane.setTexture(tex);
 
 		Shape3D square_shp = new Shape3D(sq, ap_plane);
