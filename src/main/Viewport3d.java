@@ -2,16 +2,17 @@ package main;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-import misc.ViewMode;
+import misc.*;
 import org.jogamp.java3d.*;
-import org.jogamp.java3d.utils.behaviors.mouse.MouseRotate;
 import org.jogamp.java3d.utils.behaviors.vp.OrbitBehavior;
-import org.jogamp.java3d.utils.geometry.ColorCube;
+import org.jogamp.java3d.utils.geometry.GeometryInfo;
+import org.jogamp.java3d.utils.geometry.NormalGenerator;
 import org.jogamp.java3d.utils.universe.SimpleUniverse;
 
-import misc.MyObservable;
-import misc.MyObserver;
 import org.jogamp.java3d.utils.universe.ViewingPlatform;
 import org.jogamp.vecmath.*;
 
@@ -23,16 +24,27 @@ import org.jogamp.vecmath.*;
 public class Viewport3d extends Viewport implements MyObserver  {
 	private static final long serialVersionUID = 1L;
 	private int _point_distance = 1;
+	private int _step_size = 1;
 
 	public boolean show_ortho_slices = false;
 	public boolean show_volume_render = false;
+	public boolean show_point_cloud = false;
+	public boolean show_marching_cube = false;
 
 	public int get_point_distance() {
 		return _point_distance;
 	}
 
+	public int get_step_size(){
+		return _step_size;
+	}
+
 	public void set_point_distance(int _point_distance) {
 		this._point_distance = _point_distance;
+	}
+
+	public void set_step_size(int step_size){
+		this._step_size = step_size;
 	}
 
 	/**
@@ -86,6 +98,7 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			update_point_cloud();
 			update_ortho_slices();
 			update_volume_rendering();
+			update_mc_rendering();
 
 			BoundingSphere bigBounds = new BoundingSphere(new Point3d(),1000);
 			OrbitBehavior orbit = new OrbitBehavior(this, OrbitBehavior.REVERSE_ROTATE);
@@ -94,6 +107,24 @@ public class Viewport3d extends Viewport implements MyObserver  {
 
 			ViewingPlatform vp = _simple_u.getViewingPlatform();
 			vp.setViewPlatformBehavior(orbit);
+
+			//light
+			BoundingSphere bounds;
+			bounds = new BoundingSphere (new Point3d(0.0d,0.0d,0.0d),
+					Double.MAX_VALUE);
+			// ambient light
+			AmbientLight a_light = new AmbientLight();
+			a_light.setInfluencingBounds(bounds);
+			a_light.setColor(new Color3f(0.1f,0.1f,0.1f));
+			_scene.addChild(a_light);
+
+			// directional light
+			DirectionalLight d_light = new DirectionalLight();
+			d_light.setInfluencingBounds(bounds);
+			d_light.setColor(new Color3f(0.1f,0.1f,0.1f));
+			d_light.setDirection(new Vector3f(-0.5f, 0, -1));
+			_scene.addChild(d_light);
+
 
 			_simple_u.addBranchGraph(_scene);
 		}
@@ -141,7 +172,7 @@ public class Viewport3d extends Viewport implements MyObserver  {
 		BranchGroup bg = new BranchGroup();
 		bg.setCapability(BranchGroup.ALLOW_DETACH);
 		bg.setCapability(BranchGroup.ALLOW_CHILDREN_WRITE);
-		if (_map_name_to_seg.size() != 0) {
+		if (_map_name_to_seg.size() != 0 && show_point_cloud) {
 			for (Segment s : _map_name_to_seg.values()) {
 				bg.addChild(create_segment_point_cloud(s));
 			}
@@ -261,6 +292,103 @@ public class Viewport3d extends Viewport implements MyObserver  {
 		}
 	}
 
+
+	public Shape3D create_marching_cube_render(Segment segment){
+		int step_size = _step_size;
+		Map<Point3d, Integer> map = new HashMap<>();
+		ArrayList<Point3d> vertex_list = new ArrayList<Point3d>();
+		ArrayList<Integer> index_list = new ArrayList<Integer>();
+
+
+		for (int x=0; x < _slices.getImageWidth() - step_size; x += step_size){
+			for (int y=0; y < _slices.getImageHeight() - step_size; y += step_size){
+				for (int z=0; z < _slices.getNumberOfImages() - step_size; z += step_size){
+					// get all adjacent voxel
+					boolean[] arr = new boolean[8];
+					arr[0] = segment.is_in_mask(x, y, z);
+					arr[1] = segment.is_in_mask(x+step_size, y, z);
+					arr[2] = segment.is_in_mask(x+step_size, y, z+step_size);
+					arr[3] = segment.is_in_mask(x, y, z+step_size);
+					arr[4] = segment.is_in_mask(x, y+step_size, z);
+					arr[5] = segment.is_in_mask(x+step_size, y+step_size, z);
+					arr[6] = segment.is_in_mask(x+step_size, y+step_size, z+step_size);
+					arr[7] = segment.is_in_mask(x, y+step_size, z+step_size);
+
+					//calculate index in mc-table
+					Cube cube = new Cube(arr);
+					int cube_index = cube.get_index();
+
+					//compute triangle array
+					int[] triangles = LabMed.get_mc().table[cube_index];
+					Point3d[] triangle_points = LabMed.get_mc().get_triangle_coordinates(triangles);
+
+					//scaling and translation
+					Point3d offset = new Point3d(x, y, z);
+					for (int i = 0; i < triangle_points.length; i++){
+						triangle_points[i].scale(step_size);
+						triangle_points[i].add(offset);
+
+						if (!map.containsKey(triangle_points[i])){
+							map.put(triangle_points[i],vertex_list.size());
+							index_list.add(vertex_list.size());
+							vertex_list.add(triangle_points[i]);
+						} else {
+							int vertex_index = map.get(triangle_points[i]);
+							index_list.add(vertex_index);
+						}
+
+					}
+				}
+			}
+		}
+
+		IndexedTriangleArray geometry = new IndexedTriangleArray(vertex_list.size(),
+				IndexedTriangleArray.COORDINATES | IndexedTriangleArray.NORMALS, index_list.size());
+
+		for(int i = 0; i < index_list.size(); i++){
+			geometry.setCoordinateIndex(i, index_list.get(i));
+		}
+		for(int i = 0; i < vertex_list.size(); i++) {
+			geometry.setCoordinate(i, vertex_list.get(i));
+		}
+		NormalGenerator normalGenerator = new NormalGenerator();
+		GeometryInfo info = new GeometryInfo(geometry);
+		normalGenerator.generateNormals(info);
+		GeometryArray geom_result = info.getGeometryArray();
+
+		Appearance app = new Appearance();
+		Material material = new Material();
+//		material.setAmbientColor(new Color3f(0.2f, 0.2f, 0.2f));
+		material.setDiffuseColor(int_to_color(segment.getColor()));
+//		material.setSpecularColor(new Color3f(1, 1, 1));
+//		material.setShininess(64);
+		app.setMaterial(material);
+		Shape3D cube_march_result = new Shape3D();
+		cube_march_result.setAppearance(app);
+		cube_march_result.setGeometry(geom_result);
+
+		return cube_march_result;
+	}
+
+	public void update_mc_rendering(){
+		TransformGroup tg = (TransformGroup) _panel3d._scene.getChild(0);
+
+		BranchGroup bg = new BranchGroup();
+		bg.setCapability(BranchGroup.ALLOW_DETACH);
+		bg.setCapability(BranchGroup.ALLOW_CHILDREN_WRITE);
+		if (_map_name_to_seg.size() != 0 && show_marching_cube) {
+			for (Segment s : _map_name_to_seg.values()) {
+				bg.addChild(create_marching_cube_render(s));
+			}
+		}
+
+		if (tg.numChildren() == 3){
+			tg.insertChild(bg, 3);
+		} else {
+			tg.setChild(bg, 3);
+		}
+	}
+
 	private Panel3d _panel3d;
 
 	/**
@@ -304,6 +432,7 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			boolean update_needed = _map_name_to_seg.containsKey(seg_name);
 			if (update_needed) {
 				update_point_cloud();
+				update_mc_rendering();
 			}
 		}
 

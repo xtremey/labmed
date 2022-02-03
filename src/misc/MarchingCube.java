@@ -1,5 +1,6 @@
 package misc;
 import misc.Cube;
+import org.jogamp.vecmath.Point3d;
 import sun.security.util.ArrayUtil;
 
 public class MarchingCube {
@@ -93,12 +94,13 @@ public class MarchingCube {
             int[] base_triangle_set = triangle_set(i);
 
             // rotate and insert case
-            handle_rotation(base_case, base_triangle_set);
+            int[] inverted_triangle_set = invert_triangles(base_triangle_set);
+//            handle_rotation(base_case, base_triangle_set);
+            handle_rotation(base_case, inverted_triangle_set);
 
             //inversion
             Cube base_case_inverted = base_case.invert();
-            int[] inverted_triangle_set = invert_triangles(base_triangle_set);
-            handle_rotation(base_case_inverted, inverted_triangle_set);
+            handle_rotation(base_case_inverted, base_triangle_set);
 
         }
     }
@@ -201,6 +203,26 @@ public class MarchingCube {
         }
     }
 
+    public Point3d calculate_point_on_edge(int edge){
+        switch (edge) {
+            case (0) : return new Point3d(0.5, 0, 0);
+            case (1) : return new Point3d(1, 0, 0.5);
+            case (2) : return new Point3d(0.5, 0, 1);
+            case (3) : return new Point3d(0, 0, 0.5);
+            case (4) : return new Point3d(1, 0.5, 0);
+            case (5) : return new Point3d(1, 0.5, 1);
+            case (6) : return new Point3d(0, 0.5, 1);
+            case (7) : return new Point3d(0, 0.5, 0);
+            case (8) : return new Point3d(0.5, 1, 0);
+            case (9) : return new Point3d(1, 1, 0.5);
+            case (10): return new Point3d(0.5, 1, 1);
+            case (11): return new Point3d(0, 1, 0.5);
+            default:
+                System.out.println("edge must be in range [0, 11]");
+                return new Point3d(0,0,0);
+        }
+    }
+
     public int[] rotate_triangles_left(int[] triangles){
         int[] new_array = new int[triangles.length];
         for (int i = 0; i < triangles.length; i++){
@@ -224,4 +246,16 @@ public class MarchingCube {
         }
         return result;
     }
+
+    public Point3d[] get_triangle_coordinates(int[] triangle){
+        Point3d[] arr = new Point3d[triangle.length];
+
+        for (int i = 0; i < triangle.length; i++){
+            int edge = triangle[i];
+            arr[i] = calculate_point_on_edge(edge);
+        }
+
+        return arr;
+    }
+
 }

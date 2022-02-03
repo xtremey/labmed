@@ -125,7 +125,17 @@ public class MenuBar extends JMenuBar {
 		item.addActionListener(toggleVolumeRendering3d);
 		_menu3d.add(item);
 
-		_menu3d.addSeparator();		
+		_menu3d.addSeparator();
+
+		item = new JCheckBoxMenuItem(new String("Show Point Cloud Rendering"), false);
+		item.addActionListener(togglePointCloudRendering3d);
+		_menu3d.add(item);
+
+		item = new JCheckBoxMenuItem(new String("Show Marching Cube Rendering"), false);
+		item.addActionListener(toggleMarchingCubeRendering3d);
+		_menu3d.add(item);
+
+		_menu3d.addSeparator();
 
 		_no_entries3d = new JMenuItem(new String("no segmentations yet"));
 		_no_entries3d.setEnabled(false);
@@ -147,6 +157,10 @@ public class MenuBar extends JMenuBar {
 
 		item = new JMenuItem(new String("Set Point Distance"));
 		item.addActionListener(newPointDistanceListener);
+		_menuTools.add(item);
+
+		item = new JMenuItem(new String("Set Step Size"));
+		item.addActionListener(newStepSizeListener);
 		_menuTools.add(item);
 		// -------------------------------------------------------------------------------------
 
@@ -312,6 +326,20 @@ public class MenuBar extends JMenuBar {
 		}
 	};
 
+	ActionListener togglePointCloudRendering3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_point_cloud = !_v3d.show_point_cloud;
+			_v3d.update_point_cloud();
+		}
+	};
+
+	ActionListener toggleMarchingCubeRendering3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_marching_cube = !_v3d.show_marching_cube;
+			_v3d.update_mc_rendering();
+		}
+	};
+
 
 	/**
 	 * ActionListener for toggling a segmentation in the 2d viewport.
@@ -439,6 +467,22 @@ public class MenuBar extends JMenuBar {
 				_no_entries2d.setVisible(false);
 				_no_entries3d.setVisible(false);
 				_tools.showTool(new ToolPointDistanceSelector());
+			}
+		}
+	};
+
+	ActionListener newStepSizeListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"Step-Size-Einstellung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				_no_entries2d.setVisible(false);
+				_no_entries3d.setVisible(false);
+				_tools.showTool(new ToolStepSizeSelector());
 			}
 		}
 	};

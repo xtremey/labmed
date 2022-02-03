@@ -18,6 +18,7 @@ public class ToolPane extends JPanel {
 	private JPanel _region_selector = null;
 	private JPanel _window_selector = null;
 	private JPanel _distance_selector = null;
+	private JPanel _step_size_selector = null;
 
 	/**
 	 * Default Constructor. Creates an empty ToolPane with no active panel.
@@ -67,6 +68,11 @@ public class ToolPane extends JPanel {
 			if (_distance_selector == null) {
 				_tab_pane.addTab("Distance", panel);
 				_distance_selector = panel;
+			}
+		} else if (panel instanceof ToolStepSizeSelector){
+			if (_step_size_selector == null) {
+				_tab_pane.addTab("Step Size", panel);
+				_step_size_selector = panel;
 			}
 		}
 

@@ -46,6 +46,10 @@ public class LabMed {
 		return _v3d;
 	}
 
+	public static MarchingCube get_mc(){
+		return _mc;
+	}
+
 	/**
 	 * Good old main.
 	 * 
