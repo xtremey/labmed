@@ -1,5 +1,7 @@
 package main;
 
+import misc.MarchingCube;
+
 /**
  * LabMed main program.
  * 
@@ -10,6 +12,7 @@ public class LabMed {
 	private static MainWindow _win; // the main window
 	private static Viewport2d _v2d; // the 2d view area
 	private static Viewport3d _v3d; // the 3d view area
+	private static MarchingCube _mc;
 	
 	/**
 	 * Returns the reference of the global image stack.
@@ -43,12 +46,18 @@ public class LabMed {
 		return _v3d;
 	}
 
+	public static MarchingCube get_mc(){
+		return _mc;
+	}
+
 	/**
 	 * Good old main.
 	 * 
 	 * @param args currently no program specific arguments
 	 */
 	public static void main(String[] args) {				
+		_mc = new MarchingCube();
+
 		// the global image stack
 		_is = ImageStack.getInstance(); 		
 		_v2d = new Viewport2d();

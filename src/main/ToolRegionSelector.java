@@ -1,10 +1,11 @@
 package main;
 
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import javax.swing.*;
-import javax.swing.event.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import java.awt.*;
 
 /**
  * GUI for making min-max based range segmentations.
@@ -12,14 +13,15 @@ import javax.swing.event.*;
  * @author Karl-Ingo Friese
  *
  */
-public class ToolRangeSelector extends JPanel  {
+public class ToolRegionSelector extends JPanel  {
 	private static final long serialVersionUID = 1L;
-	private int _min, _max;
+	private int _variance;
+	private int[] _seed_pixel;
 	private Segment _seg;
 	private JList<String> _seg_list;
-	private JSlider _min_slider, _max_slider;
-	private JLabel _range_sel_title, _min_label, _max_label;
+	private JSlider _variance_slider;
 	private JButton _seg_start_button;
+	private JLabel _range_sel_title, _variance_label;
 
 	/**
 	 * Default Constructor. Creates the GUI element and connects it to a
@@ -27,20 +29,20 @@ public class ToolRangeSelector extends JPanel  {
 	 *
 	 * @param seg		the segmentation to be modified
 	 */
-	public ToolRangeSelector(Segment seg) {
+	public ToolRegionSelector(Segment seg) {
 		_seg = seg;
 
 		final ImageStack slices = ImageStack.getInstance();		
 		JLabel seg_sel_title = new JLabel ("Edit Segmentation");
 		
-		_seg_list = new JList<String>(slices.getSegNamesByType(SegmentType.RANGE));
-		_seg_list.setSelectedIndex(slices.getSegNamesByType(SegmentType.RANGE).indexOf(seg.getName()));
+		_seg_list = new JList<String>(slices.getSegNamesByType(SegmentType.REGION));
+		_seg_list.setSelectedIndex(slices.getSegNamesByType(SegmentType.REGION).indexOf(seg.getName()));
 		_seg_list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
 		_seg_list.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent e) {
 				int seg_index = _seg_list.getSelectedIndex();
-				String name = (String)(slices.getSegNamesByType(SegmentType.RANGE).getElementAt(seg_index));
+				String name = (String)(slices.getSegNamesByType(SegmentType.REGION).getElementAt(seg_index));
 				if (!_seg.getName().equals(name)) {
 					_seg = slices.getSegment(name);
 					_range_sel_title.setText("Range Selector - "+_seg.getName());
@@ -57,50 +59,42 @@ public class ToolRangeSelector extends JPanel  {
 
 		// range_max needs to be calculated from the bits_stored value
 		// in the current dicom series
-		int range_max = slices.get_max_val();
-		_min = (int) range_max / 2;
-		_max = (int) range_max / 2;
+		int range_max = 100;
+		_variance = 10;
 		
-		_min_label = new JLabel("Min:");
-		_max_label = new JLabel("Max:");
+		_variance_label = new JLabel("Variance:");
 		
-		_min_slider = new JSlider(0, range_max, _min);
-		_min_slider.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				JSlider source = (JSlider) e.getSource();
-				if (source.getValueIsAdjusting()) {
-					_min = (int)source.getValue();
-					System.out.println("_min_slider stateChanged: "+_min);
-					_seg.create_range_seg(_min, _max, slices);
-					LabMed.get_v2d().update_view();
-				}
-			}
-		});		
-		
-		_max_slider = new JSlider(0, range_max, _max);
-		_max_slider.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				JSlider source = (JSlider) e.getSource();
-				if (source.getValueIsAdjusting()) {
-					_max = (int)source.getValue();
-					System.out.println("_max_slider stateChanged: "+_max);
-					_seg.create_range_seg(_min, _max, slices);
-					LabMed.get_v2d().update_view();
-				}
-			}
-		});
+		_variance_slider = new JSlider(0, range_max, _variance);
 
-		_seg_start_button = new JButton("Show 3D Segmentation");
+		_seg_start_button = new JButton("Create Segmentation");
 
 		_seg_start_button.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				JButton source = (JButton) e.getSource();
 				if (source.getModel().isPressed()) {
+					_seed_pixel = LabMed.get_v2d().get_seed_pixel();
+					System.out.println("_variance_slider stateChanged: "+_variance);
+					_seg.create_region_segment(_seed_pixel, _variance, slices);
+					LabMed.get_v2d().update_view();
 					LabMed.get_v3d().update_view();
 				}
 			}
 		});
-		
+
+
+		_variance_slider.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent e) {
+				JSlider source = (JSlider) e.getSource();
+				if (source.getValueIsAdjusting()) {
+//					_seed_pixel = LabMed.get_v2d().get_seed_pixel();
+					_variance = (int)source.getValue();
+					System.out.println("_variance_slider stateChanged: "+_variance);
+//					_seg.create_region_segment(_seed_pixel, _variance, slices);
+//					LabMed.get_v2d().update_view();
+				}
+			}
+		});
+
 		setLayout(new GridBagLayout());
 		GridBagConstraints c = new GridBagConstraints();
 		c.weighty = 0.3;
@@ -120,11 +114,9 @@ public class ToolRangeSelector extends JPanel  {
 
 		c.weightx = 0;
 		c.gridx = 1; c.gridy = 1; this.add(_seg_start_button, c);
-		c.gridx = 1; c.gridy = 2; this.add(_min_label, c);
-		c.gridx = 1; c.gridy = 3; this.add(_max_label, c);
-		c.gridx = 2; c.gridy = 2; this.add(_min_slider, c);
-		c.gridx = 2; c.gridy = 3; this.add(_max_slider, c);
-		
+		c.gridx = 1; c.gridy = 2; this.add(_variance_label, c);
+		c.gridx = 1; c.gridy = 3; this.add(_variance_slider, c);
+
 		// setBackground(Color.blue);
 	}	
 }

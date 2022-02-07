@@ -54,6 +54,12 @@ public class Viewport2d extends Viewport implements MyObserver {
 	// store the current viewmode
 	private ViewMode _view_mode = ViewMode.TRANSVERSAL;
 
+	private int[] _seed_pixel = new int[3];
+
+	public int active_transversal = 0;
+	public int active_frontal = 0;
+	public int active_saggital = 0;
+
 	/**
 	 * Private class, implementing the GUI element for displaying the 2d data.
 	 * Implements the MouseListener Interface.
@@ -71,6 +77,22 @@ public class Viewport2d extends Viewport implements MyObserver {
 
 		public void mouseClicked ( java.awt.event.MouseEvent e ) { 
 			System.out.println("Panel2d::mouseClicked: x="+e.getX()+" y="+e.getY());
+			int y = e.getY() * _h / super.getHeight();
+			int x = e.getX() * _w / super.getWidth();
+			System.out.println("x: " + x + ", y: " + y);
+			if(_view_mode == ViewMode.TRANSVERSAL){
+				_seed_pixel[0] = x;
+				_seed_pixel[1] = y;
+				_seed_pixel[2] = _slices.getActiveImageID();
+			} else if (_view_mode == ViewMode.SAGITTAL){
+				_seed_pixel[0] = _slices.getActiveImageID();
+				_seed_pixel[1] = x;
+				_seed_pixel[2] = y;
+			} else if (_view_mode == ViewMode.FRONTAL){
+				_seed_pixel[0] = x;
+				_seed_pixel[1] = _slices.getActiveImageID();
+				_seed_pixel[2] = y;
+			}
 		}
 		public void mousePressed ( java.awt.event.MouseEvent e ) {}
 		public void mouseReleased( java.awt.event.MouseEvent e ) {}
@@ -120,6 +142,13 @@ public class Viewport2d extends Viewport implements MyObserver {
 			      	 
 			       	if (slice_index>=0){
 			       		_slices.setActiveImage(slice_index);
+						if (_view_mode == ViewMode.TRANSVERSAL){
+							active_transversal = slice_index;
+						} else if (_view_mode == ViewMode.FRONTAL){
+							active_frontal = slice_index;
+						} else {
+							active_saggital = slice_index;
+						}
 			       	}
 				 }
 			});
@@ -472,5 +501,48 @@ public class Viewport2d extends Viewport implements MyObserver {
 			}
 		}
 		update_view();
+	}
+
+	public int[] get_seed_pixel() {
+		return _seed_pixel;
+	}
+
+
+	public BufferedImage getBGImage(ViewMode mode, int pos, int alpha){
+
+		if (mode == ViewMode.TRANSVERSAL) {
+			BufferedImage img = new BufferedImage(_slices.getImageWidth(), _slices.getImageHeight(),
+					BufferedImage.TYPE_INT_ARGB);
+			for (int y = 0; y < _slices.getImageWidth(); y++){
+				for (int x = 0; x < _slices.getImageHeight(); x++){
+					int greyscale = _slices.get_greyscale(x, y, pos);
+					int argb = ((greyscale <<24) + (greyscale<<16) + (greyscale<<8) + greyscale);
+					img.setRGB(x, y, argb);
+				}
+			}
+			return img;
+		} else if (mode == ViewMode.FRONTAL){
+			BufferedImage img = new BufferedImage(_slices.getImageWidth(), _slices.getNumberOfImages(),
+					BufferedImage.TYPE_INT_ARGB);
+			for (int x = 0; x < _slices.getImageWidth(); x++){
+				for (int z = 0; z < _slices.getNumberOfImages(); z++){
+					int greyscale = _slices.get_greyscale(x, pos, z);
+					int argb = (greyscale<<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+					img.setRGB(x, z, argb);
+				}
+			}
+			return img;
+		}
+		BufferedImage img = new BufferedImage(_slices.getImageHeight(), _slices.getNumberOfImages(),
+				BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < _slices.getImageHeight(); y++){
+			for (int z = 0; z < _slices.getNumberOfImages(); z++){
+				int greyscale = _slices.get_greyscale(pos, y, z);
+				int argb = (greyscale <<24) + (greyscale<<16) + (greyscale<<8) + greyscale;
+				img.setRGB(y, z, argb);
+			}
+		}
+		return img;
+
 	}
 }

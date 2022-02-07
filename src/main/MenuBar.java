@@ -117,11 +117,25 @@ public class MenuBar extends JMenuBar {
 
 		item = new JMenuItem(new String("3d Item 1"));
 		// item.addActionListener(...);
-		item = new JCheckBoxMenuItem(new String("Show original Data"), false);		
-		item.addActionListener(toggleBGListener3d);		
+		item = new JCheckBoxMenuItem(new String("Show Orthogonal Slices"), false);
+		item.addActionListener(toggleOrthoSlices3d);
 		_menu3d.add(item);
 
-		_menu3d.addSeparator();		
+		item = new JCheckBoxMenuItem(new String("Show Volume Rendering"), false);
+		item.addActionListener(toggleVolumeRendering3d);
+		_menu3d.add(item);
+
+		_menu3d.addSeparator();
+
+		item = new JCheckBoxMenuItem(new String("Show Point Cloud Rendering"), false);
+		item.addActionListener(togglePointCloudRendering3d);
+		_menu3d.add(item);
+
+		item = new JCheckBoxMenuItem(new String("Show Marching Cube Rendering"), false);
+		item.addActionListener(toggleMarchingCubeRendering3d);
+		_menu3d.add(item);
+
+		_menu3d.addSeparator();
 
 		_no_entries3d = new JMenuItem(new String("no segmentations yet"));
 		_no_entries3d.setEnabled(false);
@@ -129,10 +143,25 @@ public class MenuBar extends JMenuBar {
 		
 		// -------------------------------------------------------------------------------------
 
-		item = new JMenuItem(new String("Neue Segmentierung"));
+		item = new JMenuItem(new String("Neue MinMax-Segmentierung"));
 		item.addActionListener(newSegmentListener);
 		_menuTools.add(item);
 
+		item = new JMenuItem(new String("Neue Region-Segmentierung"));
+		item.addActionListener(newRegionSegmentListener);
+		_menuTools.add(item);
+
+		item = new JMenuItem(new String("Set Center / Width"));
+		item.addActionListener(newWindowListener);
+		_menuTools.add(item);
+
+		item = new JMenuItem(new String("Set Point Distance"));
+		item.addActionListener(newPointDistanceListener);
+		_menuTools.add(item);
+
+		item = new JMenuItem(new String("Set Step Size"));
+		item.addActionListener(newStepSizeListener);
+		_menuTools.add(item);
 		// -------------------------------------------------------------------------------------
 
 		add(_menuFile);
@@ -283,6 +312,35 @@ public class MenuBar extends JMenuBar {
 		}
 	};
 
+	ActionListener toggleOrthoSlices3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_ortho_slices = !_v3d.show_ortho_slices;
+			_v3d.update_ortho_slices();
+		}
+	};
+
+	ActionListener toggleVolumeRendering3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_volume_render = !_v3d.show_volume_render;
+			_v3d.update_volume_rendering();
+		}
+	};
+
+	ActionListener togglePointCloudRendering3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_point_cloud = !_v3d.show_point_cloud;
+			_v3d.update_point_cloud();
+		}
+	};
+
+	ActionListener toggleMarchingCubeRendering3d = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			_v3d.show_marching_cube = !_v3d.show_marching_cube;
+			_v3d.update_mc_rendering();
+		}
+	};
+
+
 	/**
 	 * ActionListener for toggling a segmentation in the 2d viewport.
 	 */
@@ -325,7 +383,7 @@ public class MenuBar extends JMenuBar {
 				if (name != null) {
 					_no_entries2d.setVisible(false);
 					_no_entries3d.setVisible(false);
-					Segment seg = is.createSegment(name);
+					Segment seg = is.createSegment(name, SegmentType.RANGE);
 					_v2d.toggleSeg(seg);
 					JMenuItem item = new JCheckBoxMenuItem(name, true);
 					item.addActionListener(toggleSegListener2d);
@@ -335,6 +393,96 @@ public class MenuBar extends JMenuBar {
 					_menu3d.add(item);
 					_tools.showTool(new ToolRangeSelector(seg));
 				}
+			}
+		}
+	};
+
+	/**
+	 * ActionListener for adding a new segmentation to the global image stack.
+	 */
+	ActionListener newRegionSegmentListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"Segmentierung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else if (is.getSegmentNumber()==3) {
+				JOptionPane.showMessageDialog(_win,
+						"In der Laborversion werden nicht mehr als drei Segmentierungen benötigt.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				String name = JOptionPane.showInputDialog(_win, "Name der Segmentierung");
+				if (name != null) {
+					_no_entries2d.setVisible(false);
+					_no_entries3d.setVisible(false);
+					Segment seg = is.createSegment(name, SegmentType.REGION);
+					_v2d.toggleSeg(seg);
+					JMenuItem item = new JCheckBoxMenuItem(name, true);
+					item.addActionListener(toggleSegListener2d);
+					_menu2d.add(item);
+					item = new JCheckBoxMenuItem(name, false);
+					item.addActionListener(toggleSegListener3d);
+					_menu3d.add(item);
+					_tools.showTool(new ToolRegionSelector(seg));
+				}
+			}
+		}
+	};
+
+	/**
+	 * ActionListener for adding a new segmentation to the global image stack.
+	 */
+	ActionListener newWindowListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"Window-Einstellung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				/*String name = JOptionPane.showInputDialog(_win, "Name des Windo");
+				if (name != null) {
+
+				}*/
+				_no_entries2d.setVisible(false);
+				_no_entries3d.setVisible(false);
+				_tools.showTool(new ToolWindowSelector());
+			}
+		}
+	};
+
+	ActionListener newPointDistanceListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"PointDistance-Einstellung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				_no_entries2d.setVisible(false);
+				_no_entries3d.setVisible(false);
+				_tools.showTool(new ToolPointDistanceSelector());
+			}
+		}
+	};
+
+	ActionListener newStepSizeListener = new ActionListener() {
+		public void actionPerformed(ActionEvent event) {
+			ImageStack is = LabMed.get_is();
+			if (is.getNumberOfImages()==0) {
+				JOptionPane.showMessageDialog(_win,
+						"Step-Size-Einstellung ohne geöffneten DICOM Datensatz nicht möglich.",
+						"Inane error",
+						JOptionPane.ERROR_MESSAGE);
+			} else {
+				_no_entries2d.setVisible(false);
+				_no_entries3d.setVisible(false);
+				_tools.showTool(new ToolStepSizeSelector());
 			}
 		}
 	};

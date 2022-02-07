@@ -24,6 +24,7 @@ public class ImageStack extends MyObservable {
 	private String _dir_name = "";
 	private int _w, _h, _active = 0;
 	private int _max_val;
+	private int _window_width, _window_center;
 
 	/**
 	 * Default Constructor.
@@ -36,6 +37,42 @@ public class ImageStack extends MyObservable {
     		_instance = new ImageStack();
     	}
     	return _instance;
+	}
+
+
+	/**
+	 * * Normalizes intensity to 0-255 greyscale
+	 * @param intensity intensity
+	 * @return The scaled and normalized Intensity
+	 */
+	public int intensity_to_greyscale(int intensity, int z){
+		DiFile df = getDiFile(z);
+
+		// get byte storage format
+		int bits_stored = df.getBitsStored();
+
+		// init center and width if not given
+//		if (!df.is_window_center_given()) _window_center = (int) Math.pow(2, (float)(bits_stored - 1));
+//		if (!df.is_window_width_given()) _window_width = (int) Math.pow(2, bits_stored);
+
+		//apply scaling
+		int scaled = intensity * df.get_slope() + df.get_intercept();
+
+		//normalize to 0-255
+		int normalized;
+		int scaled_center = _window_center * df.get_slope() + df.get_intercept();
+		double lower_bound = _window_center - 0.5 - (_window_width - 1) / 2.0;
+		double upper_bound = _window_center - 0.5 + (_window_width - 1) / 2.0;
+		if (scaled <= lower_bound){
+			normalized = 0;
+		} else if (scaled > upper_bound){
+			normalized = 255;
+		} else {
+//			normalized = (int) Math.round((scaled - lower_bound)  * 255 / (upper_bound - lower_bound));
+			normalized = (int) Math.round(((scaled - _window_center - 0.5) / (_window_width - 1) + 0.5) * 255);
+		}
+
+		return normalized;
 	}
 
 	/**
@@ -145,7 +182,19 @@ public class ImageStack extends MyObservable {
 					if (_h==0) _h = df.getImageHeight();
 					if (_max_val == 0) _max_val = df.get_max_val();
 
-				    notifyObservers(new Message(Message.M_NEW_IMAGE_LOADED));					
+					if (df.is_window_center_given()) {
+						_window_center = df.get_window_center();
+					} else {
+						_window_center = (int) Math.pow(2, (float)(df.getBitsStored() - 1));
+					}
+					if (df.is_window_width_given()) {
+						_window_width = df.get_window_width();
+					} else {
+						_window_width = (int) Math.pow(2, df.getBitsStored());
+					}
+
+
+					notifyObservers(new Message(Message.M_NEW_IMAGE_LOADED));
 				}
 			    
 			    progress_win.setVisible(false);
@@ -161,14 +210,14 @@ public class ImageStack extends MyObservable {
 	 * @param name	the name of the new segment (must be unique)
 	 * @return		the new segment or null if the name was not unique
 	 */
-	public Segment createSegment(String name) {
+	public Segment createSegment(String name, SegmentType type) {
 		Segment seg;
 
 		if (_segment_map.containsKey(name)) {
 			seg = null;
 		} else {
 			int[] def_colors = {0xff0000, 0x00ff00, 0x0000ff};
-			seg = new Segment(name, _w, _h, _dicom_files.length);
+			seg = new Segment(name, _w, _h, _dicom_files.length, type);
 			seg.setColor(def_colors[_segment_map.size()]);
 			_segment_map.put(name, seg);
 			_seg_names.addElement(name);
@@ -188,7 +237,8 @@ public class ImageStack extends MyObservable {
 
 
 	public int get_greyscale(int x, int y, int z){ // x is width, y is height, z is image number
-		return getDiFile(z).get_greyscale(x, y);
+		int intensity = get_intensity(x, y, z);
+		return intensity_to_greyscale(intensity, z);
 	}
 	
 	/**
@@ -238,6 +288,19 @@ public class ImageStack extends MyObservable {
 		return _seg_names;
 	}
 
+	public DefaultListModel<String> getSegNamesByType( SegmentType type) {
+		DefaultListModel<String> result = new DefaultListModel<>();
+		for(int i = 0; i < _seg_names.size(); i++ ){
+			String name = _seg_names.get(i);
+			Segment current_segment = _segment_map.get(name);
+			if(current_segment.get_segment_type() == type) {
+				result.addElement(name);
+			}
+
+		}
+		return result;
+	}
+
 	/**
 	 * Returns the width of the images in the image stack.
 	 *   
@@ -275,6 +338,22 @@ public class ImageStack extends MyObservable {
 		_active = i;
 
 	    notifyObservers(new Message(Message.M_NEW_ACTIVE_IMAGE, Integer.valueOf(i)));
+	}
+
+	public int get_window_center() {
+		return _window_center;
+	}
+
+	public void set_window_center(int _window_center) {
+		this._window_center = _window_center;
+	}
+
+	public int get_window_width() {
+		return _window_width;
+	}
+
+	public void set_window_width(int _window_width) {
+		this._window_width = _window_width;
 	}
 }
 
