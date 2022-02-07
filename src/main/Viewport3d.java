@@ -119,11 +119,25 @@ public class Viewport3d extends Viewport implements MyObserver  {
 			_scene.addChild(a_light);
 
 			// directional light
-			DirectionalLight d_light = new DirectionalLight();
-			d_light.setInfluencingBounds(bounds);
-			d_light.setColor(new Color3f(0.1f,0.1f,0.1f));
-			d_light.setDirection(new Vector3f(-0.5f, 0, -1));
-			_scene.addChild(d_light);
+//			DirectionalLight d_light = new DirectionalLight();
+//			d_light.setInfluencingBounds(bounds);
+//			d_light.setColor(new Color3f(0.1f,0.1f,0.1f));
+//			d_light.setDirection(new Vector3f(-0.5f, 0, -1));
+//			_scene.addChild(d_light);
+
+			//point light 1
+			PointLight p_light = new PointLight();
+			p_light.setInfluencingBounds(bounds);
+			p_light.setColor(new Color3f(0.003f,0.003f,0.003f));
+			p_light.setPosition(new Point3f(100f, 100f, 100f));
+			_scene.addChild(p_light);
+
+			//point light 1
+			PointLight p_light2 = new PointLight();
+			p_light2.setInfluencingBounds(bounds);
+			p_light2.setColor(new Color3f(0.0025f,0.0025f,0.0025f));
+			p_light2.setPosition(new Point3f(-100f, -100f, 100f));
+			_scene.addChild(p_light2);
 
 
 			_simple_u.addBranchGraph(_scene);
@@ -132,8 +146,8 @@ public class Viewport3d extends Viewport implements MyObserver  {
 	}
 
 	public Color3f int_to_color(int color){
-		int r = color & 0x00ff0000;
-		int g = color & 0x0000ff00;
+		int r = (color & 0x00ff0000) >> 16;
+		int g = (color & 0x0000ff00) >> 8;
 		int b = color & 0x000000ff;
 		return new Color3f(r, g, b);
 	}
@@ -359,13 +373,16 @@ public class Viewport3d extends Viewport implements MyObserver  {
 		Appearance app = new Appearance();
 		Material material = new Material();
 //		material.setAmbientColor(new Color3f(0.2f, 0.2f, 0.2f));
-		material.setDiffuseColor(int_to_color(segment.getColor()));
-//		material.setSpecularColor(new Color3f(1, 1, 1));
+		Color3f color = int_to_color(segment.getColor());
+		material.setDiffuseColor(new Color3f(color.x, color.y, color.z));
+		material.setSpecularColor(new Color3f(1, 1, 1));
 //		material.setShininess(64);
 		app.setMaterial(material);
+		app.setColoringAttributes(new ColoringAttributes(color, ColoringAttributes.NICEST));
 		Shape3D cube_march_result = new Shape3D();
 		cube_march_result.setAppearance(app);
 		cube_march_result.setGeometry(geom_result);
+//		cube_march_result.setGeometry(geometry);
 
 		return cube_march_result;
 	}

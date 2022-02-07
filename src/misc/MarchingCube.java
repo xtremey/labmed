@@ -1,7 +1,6 @@
 package misc;
 import misc.Cube;
 import org.jogamp.vecmath.Point3d;
-import sun.security.util.ArrayUtil;
 
 public class MarchingCube {
     public int[][] table;
